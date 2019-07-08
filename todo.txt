@@ -1,0 +1,29 @@
+Big Picture:
+{
+    [] On linux, it would require ELF and DWARF parser to get information like
+	{
+        - Source code line and machine code address mappings
+            - Types and structs
+            - Location of variables depending upon the current program counter
+            - Function start and end addresses
+            - Stack tracing
+    }
+    So we probably want to keep the parsing of ELF and DWARF separate as we develop so that it can be reused as a library.
+    
+        [] Platform specific controls would be required for controlling breakpoints. 
+    I want the debugger interface to be independent of platform specific stuff like ptrace and ELF/DWARF symbols.
+    
+}
+
+Todo:
+{
+    [] Assembly level:
+    {
+        [] Handling x86 and x64 properly ... ?
+        [x] Breakpoints (on startup and given an address)
+        [x] Continue
+        [] Single-stepping(Step over)
+        [] Reading and writiing registers
+        [] Reading and writing memory
+    }
+}

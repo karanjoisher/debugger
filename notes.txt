@@ -1,0 +1,5 @@
+Resources:
+1. How to write a debugger for Linux Applications: https://blog.tartanllama.xyz/writing-a-linux-debugger-setup/
+2. how-debuggers-work-part-1 https://eli.thegreenplace.net/2011/01/23/how-debuggers-work-part-1
+3. 
+
