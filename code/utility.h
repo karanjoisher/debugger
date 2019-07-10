@@ -17,9 +17,10 @@
 
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof((a)[0]))
 
-#define KILOBYTES(Value) ((Value)*1024LL)
-#define MEGABYTES(Value) (KILOBYTES(Value)*1024LL)
-#define GIGABYTES(Value) (MEGABYTES(Value)*1024LL)
-#define TERABYTES(Value) (GIGABYTES(Value)*1024LL)
+#define KILOBYTES(value) ((value)*1024LL)
+#define MEGABYTES(value) (KILOBYTES(value)*1024LL)
+#define GIGABYTES(value) (MEGABYTES(value)*1024LL)
+#define TERABYTES(value) (GIGABYTES(value)*1024LL)
 
+#define LOW_32_FROM_64(value) ((value) & 0x00000000FFFFFFFF)
 #endif //UTILIY_H

@@ -22,8 +22,10 @@ Todo:
         [] Handling x86 and x64 properly ... ?
         [x] Breakpoints (on startup and given an address)
         [x] Continue
-        [] Single-stepping(Step over)
-        [] Reading and writiing registers
+        [x] Step in
+        [] Single-stepping(Step over): This would require parsing instruction opcodes for call instructions
+        
+        [] Reading and writing registers
         [] Reading and writing memory
     }
 }

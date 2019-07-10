@@ -75,6 +75,7 @@ s64 GetFirstIndex(char *str, char val)
     return result;
 }
 
+// TODO(Karan): Make better string to number type functions to handle signedness and different data types
 u64 InterpretStringAsUint64(char *str, u32 length = 0)
 {
     u64 value = 0;
