@@ -22,5 +22,16 @@
 #define GIGABYTES(value) (MEGABYTES(value)*1024LL)
 #define TERABYTES(value) (GIGABYTES(value)*1024LL)
 
+inline void ArrayCopy(void *source, void *destination, u32 size)
+{
+    char *s = (char*)source;
+    char *d = (char*)destination;
+    while(size--)
+    {
+        *s++ = *d++;
+    }
+}
+
+
 #define LOW_32_FROM_64(value) ((value) & 0x00000000FFFFFFFF)
 #endif //UTILIY_H

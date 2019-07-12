@@ -23,15 +23,28 @@
 #define MAX_FILEPATH_LENGTH 512
 #define MAX_FILENAME_LENGTH 128
 
-#if 0
+
 enum ProcessMode
 {
     x86,
     x86_64
 };
-#endif
 
-struct Registersx86_64
+
+/* NOTE(Karan): 
+32bit
+u short int 2
+s long int 4
+u long long int 8
+u int 4
+
+64bit
+u short int 2
+s long int 8
+u long long int 8
+u int 4 */
+
+struct GPRegistersx86_64
 {
     u64 r15;
     u64 r14;
@@ -62,6 +75,243 @@ struct Registersx86_64
     u64 gs;
 };
 
+struct FPRegistersx86_64
+{
+    u16 cwd;
+    u16 swd;
+    u16 ftw;
+    u16 fop;
+    u64 fip;
+    u64 rdp;
+    u32 mxcsr;
+    u32 mxcr_mask;
+    u32 st_space[32];   /* 8*16 bytes for each FP-reg = 128 bytes */
+    u32 xmm_space[64];  /* 16*16 bytes for each XMM-reg = 256 bytes */
+    u32 padding[24];
+};
+
+
+struct Registersx86_64
+{
+    struct
+    {
+        union
+        {
+            GPRegistersx86_64 gpRegs;
+            struct
+            {
+                u64 r15;
+                u64 r14;
+                u64 r13;
+                u64 r12;
+                u64 rbp;
+                u64 rbx;
+                u64 r11;
+                u64 r10;
+                u64 r9;
+                u64 r8;
+                u64 rax;
+                u64 rcx;
+                u64 rdx;
+                u64 rsi;
+                u64 rdi;
+                u64 orig_rax;
+                u64 rip;
+                u64 cs;
+                u64 eflags;
+                u64 rsp;
+                u64 ss;
+                u64 fs_base;
+                u64 gs_base;
+                u64 ds;
+                u64 es;
+                u64 fs;
+                u64 gs;
+            };
+        };
+        union
+        {
+            FPRegistersx86_64 fpRegs;
+            struct
+            {
+                u16 cwd;
+                u16 swd;
+                u16 ftw;
+                u16 fop;
+                u64 fip;
+                u64 rdp;
+                u32 mxcsr;
+                u32 mxcr_mask;
+                u32 st_space[32];   
+                u32 xmm_space[64];  
+                u32 padding[24];
+            };
+        };
+    };
+};
+
+
+#ifdef __x86_64__
+#define ARE_GPREGS_UNALIGNED (offset(GPRegistersx86_64, r15) - offset(user_regs_struct, r15) + \
+offset(GPRegistersx86_64, r14) - offset(user_regs_struct, r14) + \
+offset(GPRegistersx86_64, r13) - offset(user_regs_struct, r13) + \
+offset(GPRegistersx86_64, r12) - offset(user_regs_struct, r12) + \
+offset(GPRegistersx86_64, rbp) - offset(user_regs_struct, rbp) + \
+offset(GPRegistersx86_64, rbx) - offset(user_regs_struct, rbx) + \
+offset(GPRegistersx86_64, r11) - offset(user_regs_struct, r11) + \
+offset(GPRegistersx86_64, r10) - offset(user_regs_struct, r10) + \
+offset(GPRegistersx86_64, r9) - offset(user_regs_struct, r9) + \
+offset(GPRegistersx86_64, r8) - offset(user_regs_struct, r8) + \
+offset(GPRegistersx86_64, rax) - offset(user_regs_struct, rax) + \
+offset(GPRegistersx86_64, rcx) - offset(user_regs_struct, rcx) + \
+offset(GPRegistersx86_64, rdx) - offset(user_regs_struct, rdx) + \
+offset(GPRegistersx86_64, rsi) - offset(user_regs_struct, rsi) + \
+offset(GPRegistersx86_64, rdi) - offset(user_regs_struct, rdi) + \
+offset(GPRegistersx86_64, orig_rax) - offset(user_regs_struct, orig_rax) + \
+offset(GPRegistersx86_64, rip) - offset(user_regs_struct, rip) + \
+offset(GPRegistersx86_64, cs) - offset(user_regs_struct, cs) + \
+offset(GPRegistersx86_64, eflags) - offset(user_regs_struct, eflags) + \
+offset(GPRegistersx86_64, rsp) - offset(user_regs_struct, rsp) + \
+offset(GPRegistersx86_64, ss) - offset(user_regs_struct, ss) + \
+offset(GPRegistersx86_64, fs_base) - offset(user_regs_struct, fs_base) + \
+offset(GPRegistersx86_64, gs_base) - offset(user_regs_struct, gs_base) + \
+offset(GPRegistersx86_64, ds) - offset(user_regs_struct, ds) + \
+offset(GPRegistersx86_64, es) - offset(user_regs_struct, es) + \
+offset(GPRegistersx86_64, fs) - offset(user_regs_struct, fs) + \
+offset(GPRegistersx86_64, gs) - offset(user_regs_struct, gs))
+#define ARE_GPREGS_ALIGNED (!ARE_GPREGS_UNALIGNED)
+#undef ARE_GPREGS_UNALIGNED
+
+#define ARE_FPREGS_UNALIGNED (offset(FPRegistersx86_64, cwd) - offset(user_fpregs_struct, cwd) + \
+offset(FPRegistersx86_64, swd) - offset(user_fpregs_struct, swd) + \
+offset(FPRegistersx86_64, ftw) - offset(user_fpregs_struct, ftw) + \
+offset(FPRegistersx86_64, fop) - offset(user_fpregs_struct, fop) + \
+offset(FPRegistersx86_64, fip) - offset(user_fpregs_struct, rip) + \
+offset(FPRegistersx86_64, rdp) - offset(user_fpregs_struct, rdp) + \
+offset(FPRegistersx86_64, mxcsr) - offset(user_fpregs_struct, mxcsr) + \
+offset(FPRegistersx86_64, mxcr_mask) - offset(user_fpregs_struct, mxcr_mask) + \
+offset(FPRegistersx86_64, st_space) - offset(user_fpregs_struct, st_space) + \
+offset(FPRegistersx86_64, xmm_space) - offset(user_fpregs_struct, xmm_space) + \
+offset(FPRegistersx86_64, padding) - offset(user_fpregs_struct, padding))
+#define ARE_FPREGS_ALIGNED (!ARE_FPREGS_UNALIGNED)
+#undef ARE_FPREGS_UNALIGNED
+
+
+#if !ARE_GPREGS_ALIGNED
+#pragma message("struct GPRegisters does not have the same alignment as struct user_regs_struct")
+#endif
+
+#if !ARE_GPREGS_ALIGNED
+#pragma message("struct FPRegisters does not have the same alignment as struct user_fpregs_struct")
+#endif
+
+inline internal void CopyGPRegistersx86_64ToUserRegsx86_64(GPRegistersx86_64 *source, struct user_regs_struct *dest)
+{
+#if ARE_GPREGS_ALIGNED
+    *dest = *((user_regs_struct*)source);
+#else
+    dest->r15 = source->r15;
+    dest->r14 = source->r14;
+    dest->r13 = source->r13;
+    dest->r12 = source->r12;
+    dest->rbp = source->rbp;
+    dest->rbx = source->rbx;
+    dest->r11 = source->r11;
+    dest->r10 = source->r10;
+    dest->r9 = source->r9;
+    dest->r8 = source->r8;
+    dest->rax = source->rax;
+    dest->rcx = source->rcx;
+    dest->rdx = source->rdx;
+    dest->rsi = source->rsi;
+    dest->rdi = source->rdi;
+    dest->orig_rax = source->orig_rax;
+    dest->rip = source->rip;
+    dest->cs = source->cs;
+    dest->eflags = source->eflags;
+    dest->rsp = source->rsp;
+    dest->ss = source->ss;
+    dest->fs_base = source->fs_base;
+    dest->gs_base = source->gs_base;
+    dest->ds = source->ds;
+    dest->es = source->es;
+    dest->fs = source->fs;
+    dest->gs = source->gs;
+#endif
+}
+
+inline internal void CopyUserRegsx86_64ToGPRegistersx86_64(struct user_regs_struct *source, GPRegistersx86_64 *dest)
+{
+#if ARE_GPREGS_ALIGNED
+    *dest = *((GPRegistersx86_64*)source);
+#else
+    dest->r15 = source->r15;
+    dest->r14 = source->r14;
+    dest->r13 = source->r13;
+    dest->r12 = source->r12;
+    dest->rbp = source->rbp;
+    dest->rbx = source->rbx;
+    dest->r11 = source->r11;
+    dest->r10 = source->r10;
+    dest->r9 = source->r9;
+    dest->r8 = source->r8;
+    dest->rax = source->rax;
+    dest->rcx = source->rcx;
+    dest->rdx = source->rdx;
+    dest->rsi = source->rsi;
+    dest->rdi = source->rdi;
+    dest->orig_rax = source->orig_rax;
+    dest->rip = source->rip;
+    dest->cs = source->cs;
+    dest->eflags = source->eflags;
+    dest->rsp = source->rsp;
+    dest->ss = source->ss;
+    dest->fs_base = source->fs_base;
+    dest->gs_base = source->gs_base;
+    dest->ds = source->ds;
+    dest->es = source->es;
+    dest->fs = source->fs;
+    dest->gs = source->gs;
+#endif
+}
+
+inline internal void CopyUserFPRegsx86_64ToFPRegistersx86_64(struct user_fpregs_struct *source, FPRegistersx86_64 *dest)
+{
+#if ARE_FPREGS_ALIGNED
+    *dest = *((FPRegistersx86_64*)source);
+#else
+    dest->cwd = source->cwd;
+    dest->swd = source->swd;
+    dest->ftw = source->ftw;
+    dest->fop = source->fop;
+    dest->fip = source->rip;
+    dest->rdp = source->rdp;
+    dest->mxcsr = source->mxcsr;
+    dest->mxcr_mask = source->mxcr_mask;
+    ArrayCopy(source->st_space, dest->st_space, sizeof(dest->st_space));    
+    ArrayCopy(source->xmm_space, dest->xmm_space, sizeof(dest->xmm_space));
+#endif
+}
+
+
+inline internal void CopyFPRegistersx86_64ToUserFPRegsx86_64(FPRegistersx86_64 *source, struct user_fpregs_struct *dest)
+{
+#if ARE_FPREGS_ALIGNED
+    *dest = *((struct user_fpregs_struct*)source);
+#else
+    dest->cwd = source->cwd;
+    dest->swd = source->swd;
+    dest->ftw = source->ftw;
+    dest->fop = source->fop;
+    dest->rip = source->fip;
+    dest->rdp = source->rdp;
+    dest->mxcsr = source->mxcsr;
+    dest->mxcr_mask = source->mxcr_mask;
+    ArrayCopy(source->st_space, dest->st_space, sizeof(dest->st_space));
+    ArrayCopy(source->xmm_space, dest->xmm_space, sizeof(dest->xmm_space));
+#endif
+}
+#endif
 
 // NOTE(Karan): Peek and Poke  must r/w _at least_ 64 bits of data  
 internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes)
@@ -138,9 +388,38 @@ internal s64 PtraceGetRegisters(pid_t pid, Registersx86_64 *registers)
         registers->eflags = (u64)(regs.eflags) & 0x00000000ffffffff;
         registers->orig_rax = (u64)(regs.orig_eax) & 0x00000000ffffffff;
         registers->rip  = (u64)(regs.eip) & 0x00000000ffffffff;
+        
+        struct user_fpxregs_struct fpRegs;
+        if(ptrace(PTRACE_GETFPXREGS, pid, &fpRegs, &fpRegs) != -1)
+        {
+            registers->cwd  = fpRegs.cwd;
+            registers->swd  = fpRegs.swd;
+            registers->ftw  = fpRegs.twd;
+            registers->fop  = fpRegs.fop;
+            registers->fip  = ((u64)fpRegs.fcs << 32) | ((u64)fpRegs.fip & 0x00000000ffffffff);
+            registers->rdp  = ((u64)fpRegs.fos << 32) | ((u64)fpRegs.foo & 0x00000000ffffffff);
+            registers->mxcsr  = (u32)fpRegs.mxcsr;
+            registers->mxcr_mask  = (u32)fpRegs.reserved;
+            ArrayCopy(fpRegs.st_space, registers->st_space, sizeof(fpRegs.st_space));
+            ArrayCopy(fpRegs.xmm_space, registers->xmm_space, sizeof(fpRegs.xmm_space));
+        }
+        else
+        {
+            return -1;
+        }
 #else 
-        *((Registersx86_64 *)registers) = *((Registersx86_64 *)(&regs));
+        CopyUserRegsx86_64ToGPRegistersx86_64(&regs, &(registers->gpRegs));
+        struct user_fpregs_struct fpRegs;
+        if(ptrace(PTRACE_GETFPREGS, pid, &fpRegs, &fpRegs) != -1)
+        {
+            CopyUserFPRegsx86_64ToFPRegistersx86_64(&fpRegs, &(registers->fpRegs));
+        }
+        else
+        {
+            return -1;
+        }
 #endif
+        
     }
     else
     {
@@ -173,12 +452,35 @@ internal s64 PtraceSetRegisters(pid_t pid, Registersx86_64 *registers)
     regs.eflags = (s32)LOW_32_FROM_64(registers->eflags) ;
     regs.orig_eax = (s32)LOW_32_FROM_64(registers->orig_rax) ;
     regs.eip  = (s32)LOW_32_FROM_64(registers->rip) ;
+    
+    struct user_fpxregs_struct fpRegs = {};
+    fpRegs.cwd  = registers->cwd;
+    fpRegs.swd  = registers->swd;
+    fpRegs.twd  = registers->ftw;
+    fpRegs.fop  = registers->fop;
+    fpRegs.fip  = (s32)LOW_32_FROM_64(registers->fip);
+    fpRegs.fcs  = (s32)LOW_32_FROM_64((registers->fip >> 32));
+    fpRegs.foo  = (s32)LOW_32_FROM_64(registers->rdp);
+    fpRegs.fos  = (s32)LOW_32_FROM_64((registers->rdp >> 32));
+    fpRegs.mxcsr  = (s32)registers->mxcsr;
+    fpRegs.reserved  = (s32)registers->mxcr_mask;
+    ArrayCopy(registers->st_space, fpRegs.st_space, sizeof(fpRegs.st_space));
+    ArrayCopy(registers->xmm_space, fpRegs.xmm_space, sizeof(fpRegs.xmm_space));
+    if(ptrace(PTRACE_SETFPXREGS, pid, &fpRegs, &fpRegs) == -1)
+    {
+        return -1;
+    }
 #else 
-    regs = *((user_regs_struct*)registers);
+    CopyGPRegistersx86_64ToUserRegsx86_64(&(registers->gpRegs), &regs);
+    struct user_fpregs_struct fpRegs = {};
+    CopyFPRegistersx86_64ToUserFPRegsx86_64(&(registers->fpRegs), &fpRegs);
+    if(ptrace(PTRACE_SETFPREGS, pid, &fpRegs, &fpRegs) == -1)
+    {
+        return -1;
+    }
 #endif
     
     return ptrace(PTRACE_SETREGS, pid, &regs, &regs);
-    
 }
 
 struct Breakpoint
@@ -395,13 +697,13 @@ int main(int argc, char **argv)
         
         Breakpoint breakpoints[16] = {};
         u32 breakpointCount = 0;
+        OUT("> ls to list all commands\n");
         while(debugging)
         {
             s32 status = 0;
             pid_t programID = waitpid(-1, &status, WNOHANG | WUNTRACED | WCONTINUED); 
             if(programID > 0)
             {
-#if 0
                 ProcessMode mode = x86_64;
                 char procFile[32] = {};
                 sprintf(procFile, "/proc/%d/exe", programID);  
@@ -413,7 +715,7 @@ int main(int argc, char **argv)
                 {
                     mode = x86;
                 }
-#endif
+                
                 if(WIFSTOPPED(status))
                 {
                     /* NOTE(Karan): Ideas for decoupling platform layer and debugger logic:
@@ -473,32 +775,45 @@ int main(int argc, char **argv)
                             bool isContinue = AreStringsSame(commandString, (char*)"continue");
                             bool isStepIn = AreStringsSame(commandString, (char*)"step in");
                             
-                            if(isContinue || isStepIn)
+                            
+                            if(AreStringsSame(commandString, (char*)"ls"))
+                            {
+                                OUT("continue\n");
+                                OUT("step in\n");
+                                OUT("registers [gp | x87 | xmm]\n");
+                                OUT("breakpoint 1234 or breakpoint 0xABCD or breakpoint 0765 or breakpoint 0b1010101\n");
+                            }
+                            else if(isContinue || isStepIn)
                             {
                                 if(hitBreakpoint)
                                 {
-                                    Registersx86_64 newRegisters = registers;
-                                    newRegisters.rip--;
-                                    s64 restoreInstructionTrap = (hitBreakpoint->instructionData & 0xFFFFFFFFFFFFFF00) | 0x00000000000000cc;
-                                    
-                                    if(PtracePokeText(programID, hitBreakpoint->address, &(hitBreakpoint->instructionData), sizeof(hitBreakpoint->instructionData)) != -1)
+                                    s64 currentInstructionDataAtHitBreakpoint = 0;
+                                    if(PtracePeekText(programID, hitBreakpoint->address, &currentInstructionDataAtHitBreakpoint, sizeof(currentInstructionDataAtHitBreakpoint)) != -1)
                                     {
-                                        if(PtraceSetRegisters(programID, &newRegisters) != -1)
+                                        s64 restoreInstructionTrap = currentInstructionDataAtHitBreakpoint;
+                                        s64 removeInstructionTrap = (currentInstructionDataAtHitBreakpoint & 0xFFFFFFFFFFFFFF00) | (hitBreakpoint->instructionData        & 0x00000000000000FF);
+                                        
+                                        if(PtracePokeText(programID, hitBreakpoint->address, &(removeInstructionTrap), sizeof(removeInstructionTrap)) != -1)
                                         {
-                                            if(ptrace(PTRACE_SINGLESTEP, programID, 0, 0) != -1)
+                                            Registersx86_64 newRegisters = registers;
+                                            newRegisters.rip--;
+                                            if(PtraceSetRegisters(programID, &newRegisters) != -1)
                                             {
-                                                siginfo_t clear = {};
-                                                signalInfo = clear;
-                                                if(waitid(P_PID, programID, &signalInfo, WNOWAIT | WUNTRACED) != -1)
+                                                if(ptrace(PTRACE_SINGLESTEP, programID, 0, 0) != -1)
                                                 {
-                                                    if(PtracePokeText(programID, hitBreakpoint->address, &restoreInstructionTrap, sizeof(restoreInstructionTrap)) != -1)
+                                                    siginfo_t clear = {};
+                                                    signalInfo = clear;
+                                                    if(waitid(P_PID, programID, &signalInfo, WNOWAIT | WUNTRACED) != -1)
                                                     {
-                                                        
-                                                    }
-                                                    else
-                                                    {
-                                                        ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to restore breakpoint at %"PRIu64" after stepping over it. %s", errno, hitBreakpoint->address, strerror(errno));
-                                                    }
+                                                        if(PtracePokeText(programID, hitBreakpoint->address, &restoreInstructionTrap, sizeof(restoreInstructionTrap)) != -1)
+                                                        {
+                                                            
+                                                        }
+                                                        else
+                                                        {
+                                                            ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to restore breakpoint at %"PRIu64" after stepping over it. %s", errno, hitBreakpoint->address, strerror(errno));
+                                                        }
+                                                    }else goto breakpoint_stepover_failure;
                                                 }else goto breakpoint_stepover_failure;
                                             }else goto breakpoint_stepover_failure;
                                         }else goto breakpoint_stepover_failure;
@@ -510,7 +825,6 @@ int main(int argc, char **argv)
                                 }
                                 
                                 commandContinue = true;
-                                
                                 if(isContinue)
                                 {
                                     if(ptrace(PTRACE_CONT, programID, 0, 0) == -1)
@@ -528,27 +842,97 @@ int main(int argc, char **argv)
                                 }
                                 
                             }
-                            else if(AreStringsSame(commandString, (char*)"registers"))
+                            else if(IsSubstring((char*)"registers", commandString))
                             {
                                 if(PtraceGetRegisters(programID, &registers) != -1)
                                 {
-                                    OUT("======================+\n");
-                                    OUT("RAX : %016"PRIx64"|\n", registers.rax);
-                                    OUT("RBX : %016"PRIx64"|\n", registers.rbx);
-                                    OUT("RCX : %016"PRIx64"|\n", registers.rcx);
-                                    OUT("RDX : %016"PRIx64"|\n", registers.rdx);
-                                    OUT("RIP : %016"PRIx64"|\n", registers.rip);
-                                    OUT("RBP : %016"PRIx64"|\n", registers.rbp);
-                                    OUT("RSP : %016"PRIx64"|\n", registers.rsp);
-                                    OUT("RSI : %016"PRIx64"|\n", registers.rsi);
-                                    OUT("RDI : %016"PRIx64"|\n", registers.rdi);
-                                    OUT(" SS : %016"PRIx64"|\n", registers.ss);
-                                    OUT(" CS : %016"PRIx64"|\n", registers.cs);
-                                    OUT(" DS : %016"PRIx64"|\n", registers.ds);
-                                    OUT(" RS : %016"PRIx64"|\n", registers.es);
-                                    OUT(" FS : %016"PRIx64"|\n", registers.fs);
-                                    OUT(" GS : %016"PRIx64"|\n", registers.gs);
-                                    OUT("======================+\n");
+                                    bool displayGPRegs = true;
+                                    bool displayx87Regs = true;
+                                    bool displayXMMRegs = true;
+                                    
+                                    if(commandStringLength > GetStringLength((char*)"registers"))
+                                    {
+                                        s64 spaceIndex = GetFirstIndex(commandString, ' ');
+                                        if(spaceIndex != -1)
+                                        {
+                                            char *registerSetToDisplay = commandString + spaceIndex + 1;
+                                            displayGPRegs = AreStringsSame(registerSetToDisplay, (char*)"gp");
+                                            displayx87Regs = AreStringsSame(registerSetToDisplay, (char*)"x87");
+                                            displayXMMRegs = AreStringsSame(registerSetToDisplay, (char*)"xmm");
+                                        }
+                                    }
+                                    
+                                    
+                                    if(displayGPRegs)
+                                    {
+                                        OUT("======================+\n");
+                                        OUT("General Purpose       +\n");
+                                        OUT("======================+\n");
+                                        OUT("RAX : %016"PRIx64"|\n", registers.rax);
+                                        OUT("ORGA: %016"PRIx64"|\n", registers.orig_rax);
+                                        OUT("RBX : %016"PRIx64"|\n", registers.rbx);
+                                        OUT("RCX : %016"PRIx64"|\n", registers.rcx);
+                                        OUT("RDX : %016"PRIx64"|\n", registers.rdx);
+                                        if(mode == x86_64)
+                                        {
+                                            OUT("R08 : %016"PRIx64"|\n", registers.r8);
+                                            OUT("R09 : %016"PRIx64"|\n", registers.r9);
+                                            OUT("R10 : %016"PRIx64"|\n", registers.r10);
+                                            OUT("R11 : %016"PRIx64"|\n", registers.r11);
+                                            OUT("R12 : %016"PRIx64"|\n", registers.r12);
+                                            OUT("R13 : %016"PRIx64"|\n", registers.r13);
+                                            OUT("R14 : %016"PRIx64"|\n", registers.r14);
+                                            OUT("R15 : %016"PRIx64"|\n", registers.r15);
+                                        }
+                                        OUT("RIP : %016"PRIx64"|\n", registers.rip);
+                                        OUT("RBP : %016"PRIx64"|\n", registers.rbp);
+                                        OUT("RSP : %016"PRIx64"|\n", registers.rsp);
+                                        OUT("RSI : %016"PRIx64"|\n", registers.rsi);
+                                        OUT("RDI : %016"PRIx64"|\n", registers.rdi);
+                                        OUT(" SS : %016"PRIx64"|\n", registers.ss);
+                                        OUT(" CS : %016"PRIx64"|\n", registers.cs);
+                                        OUT(" DS : %016"PRIx64"|\n", registers.ds);
+                                        OUT(" RS : %016"PRIx64"|\n", registers.es);
+                                        OUT(" FS : %016"PRIx64"|\n", registers.fs);
+                                        OUT("FSBS: %016"PRIx64"|\n", registers.fs_base);
+                                        OUT(" GS : %016"PRIx64"|\n", registers.gs);
+                                        OUT("GSBS: %016"PRIx64"|\n", registers.gs_base);
+                                        OUT("FLGS: %016"PRIx64"|\n", registers.eflags);
+                                    }
+                                    if(displayx87Regs)
+                                    {
+                                        OUT("=========================+\n");
+                                        OUT("x87 FPU                  +\n");
+                                        OUT("=========================+\n");
+                                        OUT("CWD: %020"PRIx16"|\n", registers.cwd);
+                                        OUT("SWD: %020"PRIx16"|\n", registers.swd);
+                                        OUT("FTW: %020"PRIx16"|\n", registers.ftw);
+                                        OUT("FOP: %020"PRIx16"|\n", registers.fop);
+                                        
+                                        OUT("RIP: %020"PRIx64"|\n", registers.fip);
+                                        OUT("RDP: %020"PRIx64"|\n", registers.rdp);
+                                        
+                                        for(u32 i = 0; i < ARRAY_COUNT(registers.st_space); i += 4)
+                                        {
+                                            OUT("ST%d: %04"PRIx32"%08"PRIx32"%08"PRIx32"|\n", i/4, registers.st_space[i + 2], registers.st_space[i + 1], registers.st_space[i]);
+                                            ASSERT(registers.st_space[i + 3] == 0);
+                                        }
+                                    }
+                                    
+                                    if(displayXMMRegs)
+                                    {
+                                        OUT("===========================================+\n");
+                                        OUT("XMM                                        +\n");
+                                        OUT("===========================================+\n");
+                                        u32 numRegs = mode == x86_64 ? 16 : 8;
+                                        for(u32 i = 0; i < numRegs; i++)
+                                        {
+                                            u32 lsdw = i * 4;
+                                            OUT("XMM%02d  :%08"PRIx32"|%08"PRIx32"|%08"PRIx32"|%08"PRIx32"|\n", i, registers.xmm_space[lsdw + 3], registers.xmm_space[lsdw + 2], registers.xmm_space[lsdw + 1], registers.xmm_space[lsdw + 0]); 
+                                        }
+                                        OUT("MXCSR  :%08"PRIx32"%27s|\n", registers.mxcsr, "");
+                                        OUT("MXCRMSK:%08"PRIx32"%27s|\n", registers.mxcr_mask, "");
+                                    }
                                 }
                                 else
                                 {
