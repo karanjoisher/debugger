@@ -25,7 +25,10 @@ Todo:
         [x] Step in
         [] Single-stepping(Step over): This would require parsing instruction opcodes for call instructions
         
-        [] Reading and writing registers
-        [] Reading and writing memory
+        [x] Reading and writing registers
+        [x] Reading memory
+        [] Think of how to provide "write to memory" operation
+        [] Command parsing, register name matching,etc are done in super slow fashion. Think of how to improve that
+        [] Peek & Poke text can be improved
     }
 }
