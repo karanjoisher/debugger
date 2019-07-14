@@ -426,6 +426,9 @@ internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes)
         u32 currentAddress = (u32)LOW_32_FROM_64(currentAddress64);
 #endif
         u64 dataAtCurrentAddress = 0;
+        // TODO(Karan): For checking PeekText fails, we need to clear
+        // errno, call PeekText and the check errno to see if PeekText
+        // errored, because PeekText can itself return -1 as _data_!
         if(PtracePeekText(pid, currentAddress, &dataAtCurrentAddress, sizeof(dataAtCurrentAddress)) != -1)
         {
             char* currentData = (((char*)data) + (numLongsInData * longSize));
@@ -454,6 +457,9 @@ internal s64 PtracePeekText(pid_t pid, u64 address, void *data, u32 bytes)
     while(bytesRead < bytes)
     {
         // TODO(Karan): How is this working?? I had to convert it to 32 for PokeText to work...Investigate this!!
+        // TODO(Karan): For checking PeekText fails, we need to clear
+        // errno, call PeekText and the check errno to see if PeekText
+        // errored, because PeekText can itself return -1 as _data_!
         long dataAtCurrentAddress = ptrace(PTRACE_PEEKTEXT, pid, currentAddress, 0);
         if(dataAtCurrentAddress != -1)
         {
