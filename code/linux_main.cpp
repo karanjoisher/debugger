@@ -394,8 +394,179 @@ RegisterLocationSizeInfo GetRegisterLocationSizeInfo(char *name, u32 length)
     return result;
 }
 
-internal s64 PtracePeekText(pid_t pid, u64 address, void *data, u32 bytes);
-internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes)
+
+struct ErrorInfo
+{
+    __ptrace_request request;
+    s32 errorCode;
+    u32 line;
+    char *file;
+    char *function;
+};
+
+
+struct PtraceErrorBookKeeping
+{
+    u32 errorCount;
+    ErrorInfo info[16];
+};
+
+void DumpToStdErr(PtraceErrorBookKeeping *bookKeeping)
+{
+    char *request;
+    char* requestStrings[] = {(char*)"PTRACE_GETREGS", (char*)"PTRACE_GETFPREGS", (char*)"PTRACE_GETFPXREGS", (char*)"PTRACE_SETREGS", (char*)"PTRACE_SETFPREGS", (char*)"PTRACE_SETFPXREGS", (char*)"PTRACE_POKETEXT", (char*)"PTRACE_SINGLESTEP", (char*)"PTRACE_CONT", (char*)"PTRACE_PEEKTEXT"};
+    if(bookKeeping->errorCount == (ARRAY_COUNT(bookKeeping->info) - 1))
+    {
+        ERR("Ptrace error book keeping is full! There might have been more errors!\n");
+    }
+    
+    for(u32 i = 0; i < bookKeeping->errorCount; i++)
+    {
+        switch(bookKeeping->info[i].request)
+        {
+            case PTRACE_GETREGS:
+            {
+                request = requestStrings[0];
+            }break;
+            case PTRACE_GETFPREGS:
+            {
+                request = requestStrings[1];
+            }break;
+            case PTRACE_GETFPXREGS:
+            {
+                request = requestStrings[2];
+            }break;
+            case PTRACE_SETREGS:
+            {
+                request = requestStrings[3];
+            }break;
+            case PTRACE_SETFPREGS:
+            {
+                request = requestStrings[4];
+            }break;
+            case PTRACE_SETFPXREGS:
+            {
+                request = requestStrings[5];
+            }break;
+            case PTRACE_POKETEXT:
+            {
+                request = requestStrings[6];
+            }break;
+            case PTRACE_SINGLESTEP:
+            {
+                request = requestStrings[7];
+            }break;
+            case PTRACE_CONT:
+            {
+                request = requestStrings[8];
+            }break;
+            case PTRACE_PEEKTEXT:
+            {
+                request = requestStrings[9];
+            }break;
+            INVALID_DEFAULT_CASE;
+        }
+        
+        ERR("ERROR:%d for %s, %s @ %s %s(%d)\n", bookKeeping->info[i].errorCode, request, strerror(bookKeeping->info[i].errorCode), bookKeeping->info[i].function, bookKeeping->info[i].file, bookKeeping->info[i].line);
+    }
+    bookKeeping->errorCount = 0;
+}
+
+
+#define PTRACE(a, b, c, d, e) PtraceWrapper((a), (b), (c), (d), (e), (char*)__FILE__, (char*)__func__, __LINE__)
+long PtraceWrapper(__ptrace_request request, pid_t pid, void *address, void *data, PtraceErrorBookKeeping *bookKeeping, char *file, char* function, u32 line)
+{
+    long result = 0;
+    errno = 0;
+    bool errored = false;
+    switch(request)
+    {
+        case PTRACE_GETREGS:
+        {
+            result = ptrace(request, pid, address, data);
+            if(result == -1)
+            {
+                ClearArray(data, sizeof(struct user_regs_struct));
+                errored = true;
+            }
+        }break;
+        case PTRACE_GETFPREGS:
+        {
+            result = ptrace(request, pid, address, data);
+            if(result == -1)
+            {
+                ClearArray(data, sizeof(struct user_fpregs_struct));
+                errored = true;
+            }
+        }break;
+#ifndef __x86_64__
+        case PTRACE_GETFPXREGS:
+        {
+            result = ptrace(request, pid, address, data);
+            if(result == -1)
+            {
+                ClearArray(data, sizeof(struct user_fpxregs_struct));
+                errored = true;
+            }
+        }break;
+#endif
+        case PTRACE_SETREGS:
+        case PTRACE_SETFPREGS:
+        case PTRACE_SETFPXREGS:
+        case PTRACE_POKETEXT:
+        case PTRACE_SINGLESTEP:
+        case PTRACE_CONT:
+        {
+            if(bookKeeping->errorCount == 0)
+            {
+                long result = ptrace(request, pid, address, data);
+                if(result == -1)
+                {
+                    errored = true;
+                }
+            }
+            else
+            {
+                errored = true;
+                result = -1;
+            }
+        }break;
+        case PTRACE_PEEKTEXT:
+        {
+            result = ptrace(request, pid, address, data);
+            if(errno != 0)
+            {
+                errored = true;
+                result = -1;
+            }
+        }break;
+        INVALID_DEFAULT_CASE;
+    }
+    
+    if(errored && errno != 0 && bookKeeping)
+    {
+        if((bookKeeping->errorCount < ARRAY_COUNT(bookKeeping->info)))
+        {
+            ErrorInfo *info = bookKeeping->info + bookKeeping->errorCount++;
+            info->errorCode = errno;
+            info->file = file;
+            info->function = function;
+            info->line = line;
+            info->request = request;
+        }
+        else
+        {
+            ASSERT(!"Error queue filled!");
+        }
+    }
+    
+    return result;
+}
+
+
+#define PTRACE_POKE_VARIABLE_LENGTH_TEXT(a, b, c, d, e) PtracePokeText((a), (b), (c), (d), (e), (char*)__FILE__, (char*)__func__, __LINE__)
+internal s64 PtracePeekText(pid_t pid, u64 address, void *data, u32 bytes, PtraceErrorBookKeeping *bookKeeping, char *file, char* function, u32 line);
+internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes, PtraceErrorBookKeeping *bookKeeping, char *file, char* function, u32 line)
 {
     u32 longSize = sizeof(long);
     u32 numLongsInData = bytes/longSize;
@@ -410,7 +581,7 @@ internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes)
 #else
         u32 currentAddress = (u32)LOW_32_FROM_64(currentAddress64);
 #endif
-        long returnValue = ptrace(PTRACE_POKETEXT, pid, currentAddress, *currentLong);
+        long returnValue = PtraceWrapper(PTRACE_POKETEXT, pid, (void*)currentAddress, (void*)(*currentLong), bookKeeping, file, function, line);
         if(returnValue == -1)
         {
             return -1;
@@ -427,11 +598,11 @@ internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes)
 #endif
         u64 dataAtCurrentAddress = 0;
         
-        if(PtracePeekText(pid, currentAddress, &dataAtCurrentAddress, sizeof(dataAtCurrentAddress)) != -1)
+        if(PtracePeekText(pid, currentAddress, &dataAtCurrentAddress, sizeof(dataAtCurrentAddress), bookKeeping, file, function, line) != -1)
         {
             char* currentData = (((char*)data) + (numLongsInData * longSize));
             ArrayCopy(currentData, &dataAtCurrentAddress, leftOverBytes);
-            long returnValue = ptrace(PTRACE_POKETEXT, pid, currentAddress, dataAtCurrentAddress);
+            long returnValue = PtraceWrapper(PTRACE_POKETEXT, pid, (void*)currentAddress, (void*)dataAtCurrentAddress, bookKeeping, file, function, line);
             if(returnValue == -1)
             {
                 return -1;
@@ -441,13 +612,13 @@ internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes)
         {
             return -1;
         }
-        
     }
     
     return 0;
 }
 
-internal s64 PtracePeekText(pid_t pid, u64 address, void *data, u32 bytes)
+#define PTRACE_PEEK_VARIABLE_LENGTH_TEXT(a, b, c, d, e) PtracePeekText((a), (b), (c), (d), (e), (char*)__FILE__, (char*)__func__, __LINE__)
+internal s64 PtracePeekText(pid_t pid, u64 address, void *data, u32 bytes, PtraceErrorBookKeeping *bookKeeping, char *file, char* function, u32 line)
 {
     u64 currentAddress = address;
     char* currentData = (char*)data;
@@ -456,7 +627,7 @@ internal s64 PtracePeekText(pid_t pid, u64 address, void *data, u32 bytes)
     {
         // TODO(Karan): How is this working?? I had to convert it to 32 for PokeText to work...Investigate this!!
         errno = 0;
-        long dataAtCurrentAddress = ptrace(PTRACE_PEEKTEXT, pid, currentAddress, 0);
+        long dataAtCurrentAddress = PtraceWrapper(PTRACE_PEEKTEXT, pid, (void*)currentAddress, 0, bookKeeping, file, function, line);
         if(errno == 0)
         {
             u32 bytesRemaining = (u32)(onePastEnd - currentData);
@@ -486,79 +657,67 @@ internal s64 PtracePeekText(pid_t pid, u64 address, void *data, u32 bytes)
     return 0;
 }
 
-internal s64 PtraceGetGPRegisters(pid_t pid, Registersx86_64 *registers)
+
+
+#define PTRACE_GET_GPREGISTERS(a, b, c) PtraceGetGPRegisters((a), (b), (c), (char*)__FILE__, (char*)__func__, __LINE__)
+internal s64 PtraceGetGPRegisters(pid_t pid, Registersx86_64 *registers, PtraceErrorBookKeeping *bookKeeping, char *file, char *function, u32 line)
 {
     struct user_regs_struct regs;
-    if(ptrace(PTRACE_GETREGS, pid, &regs, &regs) != -1)
-    {
+    s64 result = PtraceWrapper(PTRACE_GETREGS, pid, &regs, &regs, bookKeeping, file, function, line);
 #ifndef __x86_64__
-        registers->rax = (u64)(regs.eax) & 0x00000000ffffffff;
-        registers->rbx = (u64)(regs.ebx) & 0x00000000ffffffff;
-        registers->rcx = (u64)(regs.ecx) & 0x00000000ffffffff;
-        registers->rdx = (u64)(regs.edx) & 0x00000000ffffffff;
-        registers->rbp = (u64)(regs.ebp) & 0x00000000ffffffff;
-        registers->rsp = (u64)(regs.esp) & 0x00000000ffffffff;
-        registers->rsi = (u64)(regs.esi) & 0x00000000ffffffff;
-        registers->rdi = (u64)(regs.edi) & 0x00000000ffffffff;
-        
-        registers->ss = (u64)(regs.xss) & 0x00000000ffffffff;
-        registers->cs = (u64)(regs.xcs) & 0x00000000ffffffff;
-        registers->ds = (u64)(regs.xds) & 0x00000000ffffffff;
-        registers->es = (u64)(regs.xes) & 0x00000000ffffffff;
-        registers->fs = (u64)(regs.xfs) & 0x00000000ffffffff;
-        registers->gs = (u64)(regs.xgs) & 0x00000000ffffffff;
-        
-        registers->eflags = (u64)(regs.eflags) & 0x00000000ffffffff;
-        registers->orig_rax = (u64)(regs.orig_eax) & 0x00000000ffffffff;
-        registers->rip  = (u64)(regs.eip) & 0x00000000ffffffff;
-#else 
-        CopyUserRegsx86_64ToGPRegistersx86_64(&regs, &(registers->gpRegs));
-#endif
-    }
-    else
-    {
-        return -1;
-    }
+    registers->rax = (u64)(regs.eax) & 0x00000000ffffffff;
+    registers->rbx = (u64)(regs.ebx) & 0x00000000ffffffff;
+    registers->rcx = (u64)(regs.ecx) & 0x00000000ffffffff;
+    registers->rdx = (u64)(regs.edx) & 0x00000000ffffffff;
+    registers->rbp = (u64)(regs.ebp) & 0x00000000ffffffff;
+    registers->rsp = (u64)(regs.esp) & 0x00000000ffffffff;
+    registers->rsi = (u64)(regs.esi) & 0x00000000ffffffff;
+    registers->rdi = (u64)(regs.edi) & 0x00000000ffffffff;
     
-    return 0;
+    registers->ss = (u64)(regs.xss) & 0x00000000ffffffff;
+    registers->cs = (u64)(regs.xcs) & 0x00000000ffffffff;
+    registers->ds = (u64)(regs.xds) & 0x00000000ffffffff;
+    registers->es = (u64)(regs.xes) & 0x00000000ffffffff;
+    registers->fs = (u64)(regs.xfs) & 0x00000000ffffffff;
+    registers->gs = (u64)(regs.xgs) & 0x00000000ffffffff;
+    
+    registers->eflags = (u64)(regs.eflags) & 0x00000000ffffffff;
+    registers->orig_rax = (u64)(regs.orig_eax) & 0x00000000ffffffff;
+    registers->rip  = (u64)(regs.eip) & 0x00000000ffffffff;
+#else 
+    CopyUserRegsx86_64ToGPRegistersx86_64(&regs, &(registers->gpRegs));
+#endif
+    return result;
 }
 
-internal s64 PtraceGetFPRegisters(pid_t pid, Registersx86_64 *registers)
+#define PTRACE_GET_FPREGISTERS(a, b, c) PtraceGetFPRegisters((a), (b), (c), (char*)__FILE__, (char*)__func__, __LINE__)
+internal s64 PtraceGetFPRegisters(pid_t pid, Registersx86_64 *registers, PtraceErrorBookKeeping *bookKeeping, char *file, char *function, u32 line)
 {
+    s64 result = 0;
 #ifndef __x86_64__
     struct user_fpxregs_struct fpRegs;
-    if(ptrace(PTRACE_GETFPXREGS, pid, &fpRegs, &fpRegs) != -1)
-    {
-        registers->cwd  = fpRegs.cwd;
-        registers->swd  = fpRegs.swd;
-        registers->ftw  = fpRegs.twd;
-        registers->fop  = fpRegs.fop;
-        registers->fip  = ((u64)fpRegs.fcs << 32) | ((u64)fpRegs.fip & 0x00000000ffffffff);
-        registers->rdp  = ((u64)fpRegs.fos << 32) | ((u64)fpRegs.foo & 0x00000000ffffffff);
-        registers->mxcsr  = (u32)fpRegs.mxcsr;
-        registers->mxcr_mask  = (u32)fpRegs.reserved;
-        ArrayCopy(fpRegs.st_space, registers->st_space, sizeof(fpRegs.st_space));
-        ArrayCopy(fpRegs.xmm_space, registers->xmm_space, sizeof(fpRegs.xmm_space));
-    }
-    else
-    {
-        return -1;
-    }
+    result = PtraceWrapper(PTRACE_GETFPXREGS, pid, &fpRegs, &fpRegs, bookKeeping, file, function, line);
+    
+    registers->cwd  = fpRegs.cwd;
+    registers->swd  = fpRegs.swd;
+    registers->ftw  = fpRegs.twd;
+    registers->fop  = fpRegs.fop;
+    registers->fip  = ((u64)fpRegs.fcs << 32) | ((u64)fpRegs.fip & 0x00000000ffffffff);
+    registers->rdp  = ((u64)fpRegs.fos << 32) | ((u64)fpRegs.foo & 0x00000000ffffffff);
+    registers->mxcsr  = (u32)fpRegs.mxcsr;
+    registers->mxcr_mask  = (u32)fpRegs.reserved;
+    ArrayCopy(fpRegs.st_space, registers->st_space, sizeof(fpRegs.st_space));
+    ArrayCopy(fpRegs.xmm_space, registers->xmm_space, sizeof(fpRegs.xmm_space));
 #else 
     struct user_fpregs_struct fpRegs;
-    if(ptrace(PTRACE_GETFPREGS, pid, &fpRegs, &fpRegs) != -1)
-    {
-        CopyUserFPRegsx86_64ToFPRegistersx86_64(&fpRegs, &(registers->fpRegs));
-    }
-    else
-    {
-        return -1;
-    }
+    result = PtraceWrapper(PTRACE_GETFPREGS, pid, &fpRegs, &fpRegs, bookKeeping, file, function, line);
+    CopyUserFPRegsx86_64ToFPRegistersx86_64(&fpRegs, &(registers->fpRegs));
 #endif
-    return 0;
+    return result;
 }
 
-internal s64 PtraceSetGPRegisters(pid_t pid, Registersx86_64 *registers)
+#define PTRACE_SET_GPREGISTERS(a, b, c) PtraceSetGPRegisters((a), (b), (c), (char*)__FILE__, (char*)__func__, __LINE__)
+internal s64 PtraceSetGPRegisters(pid_t pid, Registersx86_64 *registers, PtraceErrorBookKeeping *bookKeeping, char *file, char *function, u32 line)
 {
     struct user_regs_struct regs = {};
 #ifndef __x86_64__
@@ -585,11 +744,11 @@ internal s64 PtraceSetGPRegisters(pid_t pid, Registersx86_64 *registers)
     CopyGPRegistersx86_64ToUserRegsx86_64(&(registers->gpRegs), &regs);
 #endif
     
-    return ptrace(PTRACE_SETREGS, pid, &regs, &regs);
+    return PtraceWrapper(PTRACE_SETREGS, pid, &regs, &regs, bookKeeping, file, function, line);
 }
 
-
-internal s64 PtraceSetFPRegisters(pid_t pid, Registersx86_64 *registers)
+#define PTRACE_SET_FPREGISTERS(a, b, c) PtraceSetFPRegisters((a), (b), (c), (char*)__FILE__, (char*)__func__, __LINE__)
+internal s64 PtraceSetFPRegisters(pid_t pid, Registersx86_64 *registers, PtraceErrorBookKeeping *bookKeeping, char *file, char *function, u32 line)
 {
 #ifndef __x86_64__
     struct user_fpxregs_struct fpRegs = {};
@@ -605,11 +764,11 @@ internal s64 PtraceSetFPRegisters(pid_t pid, Registersx86_64 *registers)
     fpRegs.reserved  = (s32)registers->mxcr_mask;
     ArrayCopy(registers->st_space, fpRegs.st_space, sizeof(fpRegs.st_space));
     ArrayCopy(registers->xmm_space, fpRegs.xmm_space, sizeof(fpRegs.xmm_space));
-    return ptrace(PTRACE_SETFPXREGS, pid, &fpRegs, &fpRegs);
+    return PtraceWrapper(PTRACE_SETFPXREGS, pid, &fpRegs, &fpRegs, bookKeeping, file, function, line);
 #else 
     struct user_fpregs_struct fpRegs = {};
     CopyFPRegistersx86_64ToUserFPRegsx86_64(&(registers->fpRegs), &fpRegs);
-    return ptrace(PTRACE_SETFPREGS, pid, &fpRegs, &fpRegs);
+    return PtraceWrapper(PTRACE_SETFPREGS, pid, &fpRegs, &fpRegs, bookKeeping, file, function, line);
 #endif
 }
 
@@ -829,6 +988,8 @@ int main(int argc, char **argv)
         Breakpoint breakpoints[16] = {};
         u32 breakpointCount = 0;
         OUT("> ls to list all commands\n");
+        PtraceErrorBookKeeping bookKeeping = {};
+        
         while(debugging)
         {
             s32 status = 0;
@@ -855,29 +1016,27 @@ int main(int argc, char **argv)
                     can send back the desired action like "CONTINUE" back to platform layer which would then 
                     execute platform specific command like ptrace(PTRACE_CONT, ..)
                     */
-                    siginfo_t signalInfo;
+                    siginfo_t signalInfo = {};
                     ptrace(PTRACE_GETSIGINFO, programID, 0, &signalInfo);
                     psiginfo(&signalInfo, 0);
                     
                     Breakpoint *hitBreakpoint = 0;
                     Registersx86_64 registers = {};
-                    if(PtraceGetGPRegisters(programID, &registers) != -1)
-                    {
-                        hitBreakpoint = FindBreakpointSetAt(registers.rip - 1, breakpoints, ARRAY_COUNT(breakpoints));
-                    }
-                    else
-                    {
-                        ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to read instruction pointer. %s", errno, strerror(errno));
-                    }
-                    PtraceGetFPRegisters(programID, &registers);
+                    PTRACE_GET_GPREGISTERS(programID, &registers, &bookKeeping);
+                    PTRACE_GET_FPREGISTERS(programID, &registers, &bookKeeping);
+                    hitBreakpoint = FindBreakpointSetAt(registers.rip - 1, breakpoints, ARRAY_COUNT(breakpoints));
                     
                     s64 instructionDataAtInstructionPointer = 0;
-                    PtracePeekText(programID, registers.rip, &instructionDataAtInstructionPointer, sizeof(instructionDataAtInstructionPointer));
+                    PTRACE_PEEK_VARIABLE_LENGTH_TEXT(programID, registers.rip, &instructionDataAtInstructionPointer, sizeof(instructionDataAtInstructionPointer), 0);
                     OUT("RIP: %"PRIx64": %"PRIx64"\n", registers.rip, instructionDataAtInstructionPointer);
                     
                     bool commandContinue = false;
                     while(!commandContinue)
                     {
+                        PTRACE_GET_GPREGISTERS(programID, &registers, &bookKeeping);
+                        PTRACE_SET_FPREGISTERS(programID, &registers, &bookKeeping);
+                        hitBreakpoint = FindBreakpointSetAt(registers.rip - 1, breakpoints, ARRAY_COUNT(breakpoints));
+                        
                         char commandStringBuffer[512] = {};
                         char *commandString = (char*)commandStringBuffer;
                         OUT("> ");
@@ -930,59 +1089,33 @@ int main(int argc, char **argv)
                                 if(hitBreakpoint)
                                 {
                                     s64 currentInstructionDataAtHitBreakpoint = 0;
-                                    if(PtracePeekText(programID, hitBreakpoint->address, &currentInstructionDataAtHitBreakpoint, sizeof(currentInstructionDataAtHitBreakpoint)) != -1)
+                                    PTRACE_PEEK_VARIABLE_LENGTH_TEXT(programID, hitBreakpoint->address, &currentInstructionDataAtHitBreakpoint, sizeof(currentInstructionDataAtHitBreakpoint), &bookKeeping);
+                                    
+                                    s64 restoreInstructionTrap = currentInstructionDataAtHitBreakpoint;
+                                    s64 removeInstructionTrap = (currentInstructionDataAtHitBreakpoint & 0xFFFFFFFFFFFFFF00) | (hitBreakpoint->instructionData  & 0x00000000000000FF);
+                                    
+                                    PTRACE_POKE_VARIABLE_LENGTH_TEXT(programID, hitBreakpoint->address, &(removeInstructionTrap), sizeof(removeInstructionTrap), &bookKeeping);
+                                    Registersx86_64 newRegisters = registers;
+                                    newRegisters.rip--;
+                                    PTRACE_SET_GPREGISTERS(programID, &newRegisters, &bookKeeping);
+                                    if(PTRACE(PTRACE_SINGLESTEP, programID, 0, 0, &bookKeeping) != -1)
                                     {
-                                        s64 restoreInstructionTrap = currentInstructionDataAtHitBreakpoint;
-                                        s64 removeInstructionTrap = (currentInstructionDataAtHitBreakpoint & 0xFFFFFFFFFFFFFF00) | (hitBreakpoint->instructionData        & 0x00000000000000FF);
-                                        
-                                        if(PtracePokeText(programID, hitBreakpoint->address, &(removeInstructionTrap), sizeof(removeInstructionTrap)) != -1)
-                                        {
-                                            Registersx86_64 newRegisters = registers;
-                                            newRegisters.rip--;
-                                            if(PtraceSetGPRegisters(programID, &newRegisters) != -1)
-                                            {
-                                                if(ptrace(PTRACE_SINGLESTEP, programID, 0, 0) != -1)
-                                                {
-                                                    siginfo_t clear = {};
-                                                    signalInfo = clear;
-                                                    if(waitid(P_PID, programID, &signalInfo, WNOWAIT | WUNTRACED) != -1)
-                                                    {
-                                                        if(PtracePokeText(programID, hitBreakpoint->address, &restoreInstructionTrap, sizeof(restoreInstructionTrap)) != -1)
-                                                        {
-                                                            
-                                                        }
-                                                        else
-                                                        {
-                                                            ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to restore breakpoint at %"PRIu64" after stepping over it. %s", errno, hitBreakpoint->address, strerror(errno));
-                                                        }
-                                                    }else goto breakpoint_stepover_failure;
-                                                }else goto breakpoint_stepover_failure;
-                                            }else goto breakpoint_stepover_failure;
-                                        }else goto breakpoint_stepover_failure;
+                                        siginfo_t clear = {};
+                                        signalInfo = clear;
+                                        waitid(P_PID, programID, &signalInfo, WNOWAIT | WUNTRACED);
                                     }
-                                    else
-                                    {
-                                        breakpoint_stepover_failure: ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to step over breakpoint at %"PRIu64". %s", errno, hitBreakpoint->address, strerror(errno));
-                                    }
+                                    
+                                    PTRACE_POKE_VARIABLE_LENGTH_TEXT(programID, hitBreakpoint->address, &restoreInstructionTrap, sizeof(restoreInstructionTrap), &bookKeeping);
                                 }
                                 
                                 commandContinue = true;
-                                if(isContinue)
-                                {
-                                    if(ptrace(PTRACE_CONT, programID, 0, 0) == -1)
-                                    {
-                                        ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to continue. %s", errno, strerror(errno));
-                                    }
-                                }
-                                else if(!hitBreakpoint)
-                                {
-                                    ASSERT(isStepIn);
-                                    if(ptrace(PTRACE_SINGLESTEP, programID, 0, 0) == -1)
-                                    {
-                                        ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to step over. %s", errno, strerror(errno));
-                                    }
-                                }
+                                if(isContinue) PTRACE(PTRACE_CONT, programID, 0, 0, &bookKeeping);
                                 
+                                if(isStepIn && !hitBreakpoint)
+                                {
+                                    ASSERT(!isContinue);
+                                    PTRACE(PTRACE_SINGLESTEP, programID, 0, 0, &bookKeeping);
+                                }
                             }
                             else if(registerInfo.size != 0)
                             {
@@ -1091,10 +1224,10 @@ int main(int argc, char **argv)
                                             IdentifyStringifiedDataTypeAndWrite32BitData(data + 3, registerLocationInStruct, dataLength - 3);
                                         }
                                     }
-                                    PtraceSetGPRegisters(programID, &newRegisters);
-                                    PtraceSetFPRegisters(programID, &newRegisters);
-                                    PtraceGetGPRegisters(programID, &registers);
-                                    PtraceGetFPRegisters(programID, &registers);
+                                    PTRACE_SET_GPREGISTERS(programID, &newRegisters, &bookKeeping);
+                                    PTRACE_SET_FPREGISTERS(programID, &newRegisters, &bookKeeping);
+                                    PTRACE_GET_GPREGISTERS(programID, &registers, &bookKeeping);
+                                    PTRACE_GET_FPREGISTERS(programID, &registers, &bookKeeping);
                                 }
                                 void *registerLocationInStruct = ((u8*)&registers) + registerInfo.offset;
                                 switch(registerInfo.size)
@@ -1146,7 +1279,7 @@ int main(int argc, char **argv)
                                 u8* data = (u8*)malloc(bytes);
                                 u8* freeDataPtr = data;
                                 u8* onePastEnd = data + bytes;
-                                PtracePeekText(programID, startAddress, data, bytes);
+                                PTRACE_PEEK_VARIABLE_LENGTH_TEXT(programID, startAddress, data, bytes, &bookKeeping);
                                 
                                 u64 currentAddress = startAddress;
                                 while(data != onePastEnd)
@@ -1180,9 +1313,7 @@ int main(int argc, char **argv)
                                     }
                                     OUT("|\n");
                                 }
-                                
                                 free(freeDataPtr);
-                                
                             }
                             else if(isRegisters || isX87 || isXMM || isGP)
                             {
@@ -1275,29 +1406,19 @@ int main(int argc, char **argv)
                                         IdentifyStringifiedDataTypeAndWrite64BitData(addressString, &breakpointAddress, addressStringLength);
                                         
                                         s64 instructionData = 0;
-                                        if(PtracePeekText(programID, breakpointAddress, &instructionData, sizeof(instructionData)) != -1)
+                                        PTRACE_PEEK_VARIABLE_LENGTH_TEXT(programID, breakpointAddress, &instructionData, sizeof(instructionData), &bookKeeping);
+                                        s64 originalInstructionData = instructionData;
+                                        
+                                        if((instructionData & 0x00000000000000FF) != 0x00000000000000cc)
                                         {
-                                            s64 originalInstructionData = instructionData;
-                                            if((instructionData & 0x00000000000000FF) != 0x00000000000000cc)
+                                            instructionData = (instructionData & 0xFFFFFFFFFFFFFF00) | 0x00000000000000cc;
+                                            if(PTRACE_POKE_VARIABLE_LENGTH_TEXT(programID, breakpointAddress, &instructionData, sizeof(instructionData), &bookKeeping) != -1)
                                             {
-                                                instructionData = (instructionData & 0xFFFFFFFFFFFFFF00) | 0x00000000000000cc;
-                                                if(PtracePokeText(programID, breakpointAddress, &instructionData, sizeof(instructionData)) != -1)
-                                                {
-                                                    
-                                                    Breakpoint *b = breakpoints + breakpointCount++;
-                                                    b->address = breakpointAddress;
-                                                    b->instructionData = originalInstructionData;
-                                                    b->isTemporary = false;
-                                                }
-                                                else
-                                                {
-                                                    ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to set breakpoint at %s = %"PRIu64". %s", errno, addressString, breakpointAddress, strerror(errno));
-                                                }
+                                                Breakpoint *b = breakpoints + breakpointCount++;
+                                                b->address = breakpointAddress;
+                                                b->instructionData = originalInstructionData;
+                                                b->isTemporary = false;
                                             }
-                                        }
-                                        else
-                                        {
-                                            ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to set breakpoint at %s = %"PRIu64". %s", errno, addressString, breakpointAddress, strerror(errno));
                                         }
                                     }
                                     else
@@ -1317,11 +1438,7 @@ int main(int argc, char **argv)
                             }
                         }
                         
-                        
-                        PtraceGetGPRegisters(programID, &registers);
-                        PtraceGetFPRegisters(programID, &registers);
-                        hitBreakpoint = FindBreakpointSetAt(registers.rip - 1, breakpoints, ARRAY_COUNT(breakpoints));
-                        
+                        DumpToStdErr(&bookKeeping);
                     }
                 }
                 else if(WIFEXITED(status))
