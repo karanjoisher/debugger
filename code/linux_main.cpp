@@ -426,9 +426,7 @@ internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes)
         u32 currentAddress = (u32)LOW_32_FROM_64(currentAddress64);
 #endif
         u64 dataAtCurrentAddress = 0;
-        // TODO(Karan): For checking PeekText fails, we need to clear
-        // errno, call PeekText and the check errno to see if PeekText
-        // errored, because PeekText can itself return -1 as _data_!
+        
         if(PtracePeekText(pid, currentAddress, &dataAtCurrentAddress, sizeof(dataAtCurrentAddress)) != -1)
         {
             char* currentData = (((char*)data) + (numLongsInData * longSize));
@@ -451,26 +449,32 @@ internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes)
 
 internal s64 PtracePeekText(pid_t pid, u64 address, void *data, u32 bytes)
 {
-    u32 bytesRead = 0;
     u64 currentAddress = address;
     char* currentData = (char*)data;
-    while(bytesRead < bytes)
+    char* onePastEnd = currentData + bytes;
+    while(currentData != onePastEnd)
     {
         // TODO(Karan): How is this working?? I had to convert it to 32 for PokeText to work...Investigate this!!
-        // TODO(Karan): For checking PeekText fails, we need to clear
-        // errno, call PeekText and the check errno to see if PeekText
-        // errored, because PeekText can itself return -1 as _data_!
+        errno = 0;
         long dataAtCurrentAddress = ptrace(PTRACE_PEEKTEXT, pid, currentAddress, 0);
-        if(dataAtCurrentAddress != -1)
+        if(errno == 0)
         {
-            char *currentDataAtCurrentAddress = (char*)(&dataAtCurrentAddress);
-            u32 copyCounter = (u32)MIN((bytes - bytesRead), sizeof(long));
-            // TODO(Karan): Copying individual bytes can be slow so look into this while optimizing
-            while(copyCounter--)
+            u32 bytesRemaining = (u32)(onePastEnd - currentData);
+            u32 copyCounter = (u32)MIN(bytesRemaining, sizeof(long));
+            if(copyCounter == sizeof(long))
             {
-                *currentData++ = *currentDataAtCurrentAddress++;
-                bytesRead++;
-                currentAddress++;
+                *((long*)currentData) = dataAtCurrentAddress;
+                currentData += copyCounter;
+                currentAddress += copyCounter;
+            }
+            else
+            {
+                char *currentDataAtCurrentAddress = (char*)(&dataAtCurrentAddress);
+                while(copyCounter--)
+                {
+                    *currentData++ = *currentDataAtCurrentAddress++;
+                    currentAddress++;
+                }
             }
         }
         else
@@ -1004,6 +1008,9 @@ int main(int argc, char **argv)
                                     }
                                     else if(m.size == 10)
                                     {
+                                        // TODO(Karan): For 80bit floating point value, we can take user's input, 
+                                        // load it into x87 FPU of the debugger, read the STx register, copy that
+                                        // data into debuggee's x87 FPU state
                                         DataType type = GetDataType(data, dataLength);
                                         switch(type)
                                         {
@@ -1134,41 +1141,26 @@ int main(int argc, char **argv)
                                 IdentifyStringifiedDataTypeAndWrite32BitData(columnsString, &columns, columnsStringLength);
                                 
                                 u32 bytes = (u32)(endAddress - startAddress);
-                                bytes = ALIGN_POW_2(bytes, displayType * columns);
-                                char *data = (char*)malloc(bytes);
+                                
+                                //bytes = ALIGN_POW_2(bytes, displayType * columns);
+                                u8* data = (u8*)malloc(bytes);
+                                u8* freeDataPtr = data;
+                                u8* onePastEnd = data + bytes;
                                 PtracePeekText(programID, startAddress, data, bytes);
                                 
-                                u8 *data8 = (u8*)data;
                                 u64 currentAddress = startAddress;
-                                while(bytes)
+                                while(data != onePastEnd)
                                 {
                                     OUT("%08"PRIx64": |", currentAddress);
-                                    u8* rowStart = data8;
-                                    for(u32 i = 0; i < columns; i++)
+                                    u8* rowStart = data;
+                                    for(u32 i = 0; (i < columns) && (data != onePastEnd); i++)
                                     {
-                                        
-                                        switch(displayType)
+                                        for(u32 j = 0; (j < displayType) && (data != onePastEnd); j++)
                                         {
-                                            case 2:
-                                            {
-                                                OUT("%02"PRIx8"%02"PRIx8" ", data8[0], data8[1]);
-                                            }break;
-                                            case 4:
-                                            {
-                                                OUT("%02"PRIx8"%02"PRIx8"%02"PRIx8"%02"PRIx8" ", data8[0], data8[1], data8[2], data8[3]);
-                                            }break;
-                                            case 8:
-                                            {
-                                                OUT("%02"PRIx8"%02"PRIx8"%02"PRIx8"%02"PRIx8"%02"PRIx8"%02"PRIx8"%02"PRIx8"%02"PRIx8" ", data8[0], data8[1], data8[2], data8[3], data8[4], data8[5], data8[6], data8[7]);
-                                            }break;
-                                            default:
-                                            {
-                                                OUT("%02"PRIx8" ", data8[0]);
-                                            }break;
+                                            OUT("%02"PRIx8, *data++);
+                                            currentAddress++;
                                         }
-                                        data8 += displayType;
-                                        currentAddress += displayType;
-                                        bytes -= displayType;
+                                        OUT(" ");
                                     }
                                     
                                     u32 stringBytes = (displayType * columns);
@@ -1189,7 +1181,7 @@ int main(int argc, char **argv)
                                     OUT("|\n");
                                 }
                                 
-                                free(data);
+                                free(freeDataPtr);
                                 
                             }
                             else if(isRegisters || isX87 || isXMM || isGP)
