@@ -321,75 +321,89 @@ struct RegisterLocationSizeInfo
 
 RegisterLocationSizeInfo GetRegisterLocationSizeInfo(char *name, u32 length)
 {
-    
     // TODO(Karan): This is ultra piggy...Think of how to handle and search strings
-    
     RegisterLocationSizeInfo result = {};
     if(length == 2)
     {
-        if(IsSubstring((char*)"r8", name)){result.offset = (offsetof(GPRegistersx86_64 , r15)); result.size = 8;}
-        else if(IsSubstring((char*)"r9", name)) {result.offset = offsetof(Registersx86_64, r9); result.size = 8;} 
-        else if(IsSubstring((char*)"cs", name)) {result.offset = offsetof(Registersx86_64, cs); result.size = 8;} 
-        else if(IsSubstring((char*)"ss", name)) {result.offset = offsetof(Registersx86_64, ss); result.size = 8;} 
-        else if(IsSubstring((char*)"ds", name)) {result.offset = offsetof(Registersx86_64, ds); result.size = 8;} 
-        else if(IsSubstring((char*)"es", name)) {result.offset = offsetof(Registersx86_64, es); result.size = 8;} 
-        else if(IsSubstring((char*)"fs", name)) {result.offset = offsetof(Registersx86_64, fs); result.size = 8;} 
-        else if(IsSubstring((char*)"gs", name)) {result.offset = offsetof(Registersx86_64, gs); result.size = 8;} 
+        if(IsPrefix(name, (char*)"r8")){result.offset = (offsetof(GPRegistersx86_64 , r15)); result.size = 8;}
+        else if(IsPrefix(name, (char*)"r9")) {result.offset = offsetof(Registersx86_64, r9); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"cs")) {result.offset = offsetof(Registersx86_64, cs); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"ss")) {result.offset = offsetof(Registersx86_64, ss); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"ds")) {result.offset = offsetof(Registersx86_64, ds); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"es")) {result.offset = offsetof(Registersx86_64, es); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"fs")) {result.offset = offsetof(Registersx86_64, fs); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"gs")) {result.offset = offsetof(Registersx86_64, gs); result.size = 8;} 
     }
     else if(length == 3)
     {
-        if(IsSubstring((char*)"st", name)) 
+        if(IsPrefix(name, (char*)"st")) 
         {
             result.offset = offsetof(Registersx86_64, st_space); 
             result.size = 10;
             u64 registerNumber = InterpretDecimalIntegerAs64BitData(name + 2, 1);
             result.offset += (u32)(registerNumber * 4 * sizeof(u32));
         } 
-        else if(IsSubstring((char*)"r10", name)) {result.offset = offsetof(Registersx86_64, r10); result.size = 8;} 
-        else if(IsSubstring((char*)"r11", name)) {result.offset = offsetof(Registersx86_64, r11); result.size = 8;} 
-        else if(IsSubstring((char*)"r12", name)) {result.offset = offsetof(Registersx86_64, r12); result.size = 8;} 
-        else if(IsSubstring((char*)"r13", name)) {result.offset = offsetof(Registersx86_64, r13); result.size = 8;} 
-        else if(IsSubstring((char*)"r14", name)) {result.offset = offsetof(Registersx86_64, r14); result.size = 8;} 
-        else if(IsSubstring((char*)"r15", name)) {result.offset = offsetof(Registersx86_64, r15); result.size = 8;} 
-        else if(IsSubstring((char*)"rbp", name)) {result.offset = offsetof(Registersx86_64, rbp); result.size = 8;} 
-        else if(IsSubstring((char*)"rbx", name)) {result.offset = offsetof(Registersx86_64, rbx); result.size = 8;} 
-        else if(IsSubstring((char*)"rax", name)) {result.offset = offsetof(Registersx86_64, rax); result.size = 8;} 
-        else if(IsSubstring((char*)"rcx", name)) {result.offset = offsetof(Registersx86_64, rcx); result.size = 8;} 
-        else if(IsSubstring((char*)"rdx", name)) {result.offset = offsetof(Registersx86_64, rdx); result.size = 8;} 
-        else if(IsSubstring((char*)"rsi", name)) {result.offset = offsetof(Registersx86_64, rsi); result.size = 8;} 
-        else if(IsSubstring((char*)"rdi", name)) {result.offset = offsetof(Registersx86_64, rdi); result.size = 8;} 
-        else if(IsSubstring((char*)"rip", name)) {result.offset = offsetof(Registersx86_64, rip); result.size = 8;} 
-        else if(IsSubstring((char*)"rsp", name)) {result.offset = offsetof(Registersx86_64, rsp); result.size = 8;} 
-        else if(IsSubstring((char*)"cwd", name)) {result.offset = offsetof(Registersx86_64, cwd); result.size = 8;} 
-        else if(IsSubstring((char*)"swd", name)) {result.offset = offsetof(Registersx86_64, swd); result.size = 8;} 
-        else if(IsSubstring((char*)"ftw", name)) {result.offset = offsetof(Registersx86_64, ftw); result.size = 8;} 
-        else if(IsSubstring((char*)"fop", name)) {result.offset = offsetof(Registersx86_64, fop); result.size = 8;} 
-        else if(IsSubstring((char*)"fip", name)) {result.offset = offsetof(Registersx86_64, fip); result.size = 8;} 
-        else if(IsSubstring((char*)"rdp", name)) {result.offset = offsetof(Registersx86_64, rdp); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"r10")) {result.offset = offsetof(Registersx86_64, r10); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"r11")) {result.offset = offsetof(Registersx86_64, r11); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"r12")) {result.offset = offsetof(Registersx86_64, r12); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"r13")) {result.offset = offsetof(Registersx86_64, r13); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"r14")) {result.offset = offsetof(Registersx86_64, r14); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"r15")) {result.offset = offsetof(Registersx86_64, r15); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rbp")) {result.offset = offsetof(Registersx86_64, rbp); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rbx")) {result.offset = offsetof(Registersx86_64, rbx); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rax")) {result.offset = offsetof(Registersx86_64, rax); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rcx")) {result.offset = offsetof(Registersx86_64, rcx); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rdx")) {result.offset = offsetof(Registersx86_64, rdx); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rsi")) {result.offset = offsetof(Registersx86_64, rsi); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rdi")) {result.offset = offsetof(Registersx86_64, rdi); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rip")) {result.offset = offsetof(Registersx86_64, rip); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rsp")) {result.offset = offsetof(Registersx86_64, rsp); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"cwd")) {result.offset = offsetof(Registersx86_64, cwd); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"swd")) {result.offset = offsetof(Registersx86_64, swd); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"ftw")) {result.offset = offsetof(Registersx86_64, ftw); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"fop")) {result.offset = offsetof(Registersx86_64, fop); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"fip")) {result.offset = offsetof(Registersx86_64, fip); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"rdp")) {result.offset = offsetof(Registersx86_64, rdp); result.size = 8;} 
     }
     else if(length == 4 || length == 5)
     {
-        if(IsSubstring((char*)"xmm", name)) 
+        if(IsPrefix(name, (char*)"flags")) {result.offset = offsetof(Registersx86_64, eflags); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"mxcsr")) {result.offset = offsetof(Registersx86_64, mxcsr); result.size = 4;} 
+        else if(IsPrefix(name, (char*)"xmm")) 
         {
-            result.offset = offsetof(Registersx86_64, xmm_space); 
+            name += 3;
+            u32 registerNumberLength = length - 3;
+            u32 registerNumber = InterpretDecimalIntegerAs32BitData(name, registerNumberLength);
+            
             result.size = 4 * sizeof(u32);
-            u64 registerNumber = InterpretDecimalIntegerAs64BitData(name + 3, length - 3);
-            result.offset += (u32)(registerNumber * 4 * sizeof(u32));
+            result.offset = (u32)(offsetof(Registersx86_64, xmm_space) + (registerNumber * 4 * sizeof(u32)));
         }
-        else if(IsSubstring((char*)"flags", name)) {result.offset = offsetof(Registersx86_64, eflags); result.size = 8;} 
-        else if(IsSubstring((char*)"mxcsr", name)) {result.offset = offsetof(Registersx86_64, mxcsr); result.size = 4;} 
     }
-    else if(length == 6)
+    else if(length == 6 || length == 7)
     {
-        if(IsSubstring((char*)"orgrax", name)) {result.offset = offsetof(Registersx86_64, orig_rax); result.size = 8;} 
-        if(IsSubstring((char*)"fsbase", name)) {result.offset = offsetof(Registersx86_64, fs_base); result.size = 8;} 
-        if(IsSubstring((char*)"gsbase", name)) {result.offset = offsetof(Registersx86_64, gs_base); result.size = 8;} 
+        if(IsPrefix(name, (char*)"xmm")) 
+        {
+            name += 3;
+            u32 registerNumberLength = 1;
+            bool isDoubleWord = false;
+            if(name[1] == 'd' || name[2] == 'd'){ isDoubleWord = true; registerNumberLength = (name[1] == 'd' ? 1 : 2);}
+            else if(name[1] == 'q' || name[2] == 'q'){ isDoubleWord = false; registerNumberLength = (name[1] == 'q' ? 1 : 2);}
+            
+            u32 registerNumber = InterpretDecimalIntegerAs32BitData(name, registerNumberLength);
+            name += registerNumberLength + 1;
+            u32 indexWithinRegister = InterpretDecimalIntegerAs32BitData(name, 1);
+            
+            result.size = (u32)(isDoubleWord ? sizeof(u32) : sizeof(u64));
+            result.offset = (u32)(offsetof(Registersx86_64, xmm_space) + (registerNumber * 4 * sizeof(u32)) + (indexWithinRegister * result.size));
+        }
+        else if(IsPrefix(name, (char*)"orgrax")) {result.offset = offsetof(Registersx86_64, orig_rax); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"fsbase")) {result.offset = offsetof(Registersx86_64, fs_base); result.size = 8;} 
+        else if(IsPrefix(name, (char*)"gsbase")) {result.offset = offsetof(Registersx86_64, gs_base); result.size = 8;} 
     }
     else if(length == 8)
     {
-        if(IsSubstring((char*)"mxcrmask", name)) {result.offset = offsetof(Registersx86_64, mxcr_mask); result.size = 4;} 
+        if(IsPrefix(name, (char*)"mxcrmask")) {result.offset = offsetof(Registersx86_64, mxcr_mask); result.size = 4;} 
     }
-    
     
     return result;
 }
@@ -888,6 +902,218 @@ internal void Backtrace(char *filepath, u32 line, const char *function, const ch
 }
 #endif
 
+enum CommandType
+{
+    command_invalid,
+    command_ls,
+    command_continue,
+    command_stepin,
+    command_read_all_registers,
+    command_read_x87,
+    command_read_gp, 
+    command_read_xmm,
+    command_breakpoint,
+    command_read_memory,
+    command_read_register,
+    command_write_register,
+};
+
+struct BreakpointCommandArguments
+{
+    u64 breakpointAddress;
+};
+
+struct ReadMemoryCommandArguments
+{
+    u64 startAddress;
+    u64 endAddress;
+    u32 columnSize;
+    u32 columns;
+};
+
+struct ReadWriteRegisterCommandArguments
+{
+    RegisterLocationSizeInfo registerInfo;
+    char data[16];
+};
+
+struct CommandInfo
+{
+    CommandType type;
+    union
+    {
+        BreakpointCommandArguments breakpointCommandArguments;
+        ReadMemoryCommandArguments readMemoryCommandArguments;
+        ReadWriteRegisterCommandArguments readWriteRegisterCommandArguments;
+    };
+};
+
+void ParseCommand(Cursor cursor, CommandInfo *commandInfo)
+{
+    CommandInfo clear = {};
+    *commandInfo = clear;
+    
+    EatAllWhitespace(&cursor);
+    if(MatchAndAdvance(&cursor, (char*)"ls"))
+    {
+        commandInfo->type = command_ls;
+        return;
+    }
+    else if(MatchAndAdvance(&cursor, (char*)"gp"))
+    {
+        commandInfo->type = command_read_gp;
+        return;
+    }
+    else if(MatchAndAdvance(&cursor, (char*)"xmm\n"))
+    {
+        commandInfo->type = command_read_xmm;
+        return;
+    }
+    else if(MatchAndAdvance(&cursor, (char*)"x87"))
+    {
+        commandInfo->type = command_read_x87;
+        return;
+    }
+    else if(MatchAndAdvance(&cursor, (char*)"continue"))
+    {
+        commandInfo->type = command_continue;
+        return;
+    }
+    else if(MatchAndAdvance(&cursor, (char*)"step in"))
+    {
+        commandInfo->type = command_stepin;
+        return;
+    }
+    else if(MatchAndAdvance(&cursor, (char*)"registers"))
+    {
+        commandInfo->type = command_read_all_registers;
+        return;
+    }
+    else if(MatchAndAdvance(&cursor, (char*)"breakpoint"))
+    {
+        EatAllWhitespace(&cursor);
+        Cursor next = cursor;
+        EatUntilWhitespace(&next);
+        u32 length = (u32)(next.at - cursor.at);
+        if(length != 0)
+        {
+            commandInfo->type = command_breakpoint;
+            IdentifyStringifiedDataTypeAndWrite64BitData(cursor.at, &(commandInfo->breakpointCommandArguments.breakpointAddress));
+        }
+        else
+        {
+            commandInfo->type = command_invalid;
+            ERR("Syntax error: breakpoint <address>\n");
+        }
+        return;
+    }
+    else if(MatchAndAdvance(&cursor, (char*)"read"))
+    {
+        EatAllWhitespace(&cursor);
+        Cursor next = cursor;
+        EatUntilWhitespace(&next);
+        commandInfo->type = command_read_memory;
+        u32 length = (u32)(next.at - cursor.at);
+        if(length == 0) commandInfo->type = command_invalid;
+        IdentifyStringifiedDataTypeAndWrite64BitData(cursor.at, &(commandInfo->readMemoryCommandArguments.startAddress), length);
+        
+        cursor = next;
+        EatAllWhitespace(&cursor);
+        next = cursor;
+        EatUntilWhitespace(&next);
+        length = (u32)(next.at - cursor.at);
+        if(length == 0) commandInfo->type = command_invalid;
+        IdentifyStringifiedDataTypeAndWrite64BitData(cursor.at, &(commandInfo->readMemoryCommandArguments.endAddress), (u32)(next.at - cursor.at));
+        
+        cursor = next;
+        EatAllWhitespace(&cursor);
+        next = cursor;
+        EatUntilWhitespace(&next);
+        length = (u32)(next.at - cursor.at);
+        if(length == 0) commandInfo->type = command_invalid;
+        IdentifyStringifiedDataTypeAndWrite32BitData(cursor.at, &(commandInfo->readMemoryCommandArguments.columnSize), (u32)(next.at - cursor.at));
+        
+        cursor = next;
+        EatAllWhitespace(&cursor);
+        next = cursor;
+        EatUntilWhitespace(&next);
+        length = (u32)(next.at - cursor.at);
+        if(length == 0) commandInfo->type = command_invalid;
+        IdentifyStringifiedDataTypeAndWrite32BitData(cursor.at, &(commandInfo->readMemoryCommandArguments.columns), (u32)(next.at - cursor.at));
+        
+        if(commandInfo->type == command_invalid) ERR("Syntax error: read <start_address> <end_address> <columnSize> <columns>\n");
+        
+        return;
+    }
+    else
+    {
+        Cursor potentialRegistername = cursor;
+        EatUntilWhitespace(&cursor);
+        RegisterLocationSizeInfo registerInfo = GetRegisterLocationSizeInfo(potentialRegistername.at, (u32)(cursor.at - potentialRegistername.at));
+        if(registerInfo.size != 0)
+        {
+            EatAllWhitespace(&cursor);
+            Cursor potentialRegisterValueString = cursor;
+            EatUntilEndOfLine(&cursor);
+            u32 dataLength = (u32)(cursor.at - potentialRegisterValueString.at);
+            if(dataLength == 0)
+            {
+                commandInfo->type = command_read_register;
+                commandInfo->readWriteRegisterCommandArguments.registerInfo = registerInfo;
+                return;
+            }
+            else
+            {
+                commandInfo->type = command_write_register;
+                commandInfo->readWriteRegisterCommandArguments.registerInfo = registerInfo;
+                
+                if(registerInfo.size == 8)
+                {
+                    IdentifyStringifiedDataTypeAndWrite64BitData(potentialRegisterValueString.at, (u64*)(commandInfo->readWriteRegisterCommandArguments.data), dataLength);
+                }
+                else if(registerInfo.size == 4)
+                {
+                    IdentifyStringifiedDataTypeAndWrite32BitData(potentialRegisterValueString.at, (u32*)(commandInfo->readWriteRegisterCommandArguments.data), dataLength);
+                }
+                else if(registerInfo.size == 10  || registerInfo.size == 16)
+                {
+                    // TODO(Karan): For 80bit floating point value, we can take user's input, 
+                    // load it into x87 FPU of the debugger, read the STx register, copy that
+                    // data into debuggee's x87 FPU state
+                    // HACK(Karan): Handle vector registers separately
+                    DataType type = GetDataType(potentialRegisterValueString.at);
+                    switch(type)
+                    {
+                        case numeric_hexadecimal:
+                        {
+                            InterpretHexadecimalAs80BitData(potentialRegisterValueString.at, (commandInfo->readWriteRegisterCommandArguments.data), dataLength);
+                        }break;
+                        case numeric_binary:
+                        {
+                            InterpretBinaryAs80BitData(potentialRegisterValueString.at, (commandInfo->readWriteRegisterCommandArguments.data), dataLength);
+                        }break;
+                        case string:
+                        {
+                            ArrayCopy(potentialRegisterValueString.at + 1, (commandInfo->readWriteRegisterCommandArguments.data), MIN(dataLength - 2, registerInfo.size));
+                        }break;
+                        default:
+                        {
+                            OUT("Currently only supports hexadecimal,binary,string inputs for 80bit registers)\n");
+                        }
+                    }
+                }
+                return;
+            }
+        }
+        else
+        {
+            commandInfo->type = command_invalid;
+            ERR("Invalid command\n");
+        }
+    }
+}
+
+
 int main(int argc, char **argv)
 {
     {
@@ -1042,11 +1268,12 @@ int main(int argc, char **argv)
                         OUT("> ");
                         
                         commandString = fgets(commandString, ARRAY_COUNT(commandStringBuffer), stdin);
-                        u32 commandStringLength = GetStringLength(commandString);
-                        ASSERT(commandString[commandStringLength - 1] == '\n');
-                        commandString[commandStringLength - 1] = 0;
-                        commandStringLength--;
-                        if(commandString)
+                        CommandInfo commandInfo = {};
+                        Cursor cursor = {};
+                        cursor.at = commandString;
+                        ParseCommand(cursor, &commandInfo);
+                        
+                        if(commandInfo.type != command_invalid)
                         {
                             /* TODO(Karan): Currently we issue ptrace commands and waitpid for the debuggee to transition into "stop state" at the head of while(debugging)
                             loop. Consider we are at a breakpoint and the user issues "step over" command. In order to "step over" breakpoint, we restore the original 
@@ -1061,18 +1288,7 @@ int main(int argc, char **argv)
                             
                             Solution: Went with option 2. waitpid can wait for process that have transitioned into waitable state _AND_ keep them waitable for future waitpid call.
                             */
-                            bool isContinue = AreStringsSame(commandString, (char*)"continue");
-                            bool isStepIn = AreStringsSame(commandString, (char*)"step in");
-                            bool isRegisters = AreStringsSame(commandString, (char*)"registers");
-                            bool isGP = AreStringsSame(commandString, (char*)"gp");
-                            bool isX87 = AreStringsSame(commandString, (char*)"x87");
-                            bool isXMM = AreStringsSame(commandString, (char*)"xmm");
-                            s64 spaceIndex = GetFirstIndex(commandString, ' ');
-                            u32 terminator = commandStringLength;
-                            if(spaceIndex != -1) terminator = (u32)spaceIndex;
-                            RegisterLocationSizeInfo registerInfo = GetRegisterLocationSizeInfo(commandString, terminator);
-                            
-                            if(AreStringsSame(commandString, (char*)"ls"))
+                            if(commandInfo.type == command_ls)
                             {
                                 OUT("continue\n");
                                 OUT("step in\n");
@@ -1084,7 +1300,7 @@ int main(int argc, char **argv)
                                 OUT("read <start_address> <end_address> <block_size> <columns>\n");
                                 OUT("breakpoint 1234 or breakpoint 0xABCD or breakpoint 0765 or breakpoint 0b1010101\n");
                             }
-                            else if(isContinue || isStepIn)
+                            else if(commandInfo.type == command_continue || commandInfo.type == command_stepin)
                             {
                                 if(hitBreakpoint)
                                 {
@@ -1109,127 +1325,32 @@ int main(int argc, char **argv)
                                 }
                                 
                                 commandContinue = true;
-                                if(isContinue) PTRACE(PTRACE_CONT, programID, 0, 0, &bookKeeping);
-                                
-                                if(isStepIn && !hitBreakpoint)
+                                if(commandInfo.type == command_continue) 
                                 {
-                                    ASSERT(!isContinue);
+                                    PTRACE(PTRACE_CONT, programID, 0, 0, &bookKeeping);
+                                }
+                                else if(commandInfo.type == command_stepin && !hitBreakpoint)
+                                {
                                     PTRACE(PTRACE_SINGLESTEP, programID, 0, 0, &bookKeeping);
                                 }
                             }
-                            else if(registerInfo.size != 0)
+                            else if(commandInfo.type == command_write_register || commandInfo.type == command_read_register)
                             {
-                                char *name = commandString;
-                                s64 spaceIndex = GetFirstIndex(name, ' ');
-                                if(spaceIndex != -1)
+                                ReadWriteRegisterCommandArguments arguments = commandInfo.readWriteRegisterCommandArguments;
+                                Registersx86_64 newRegisters = registers;
+                                RegisterLocationSizeInfo registerInfo = arguments.registerInfo;
+                                void* registerLocationInStruct = (void*)(((u8*)&newRegisters) + registerInfo.offset);
+                                
+                                if(commandInfo.type == command_write_register)
                                 {
-                                    u32 nameLength = (u32)spaceIndex;
-                                    Registersx86_64 newRegisters = registers;
-                                    RegisterLocationSizeInfo m = registerInfo;
+                                    ArrayCopy(arguments.data, registerLocationInStruct, registerInfo.size);
                                     
-                                    char *data = name + nameLength + 1;
-                                    u32 dataLength = commandStringLength - nameLength - 1;
-                                    if(m.size == 8)
-                                    {
-                                        u64 *registerLocationInStruct = (u64*)(((u8*)&newRegisters) + m.offset);
-                                        IdentifyStringifiedDataTypeAndWrite64BitData(data, registerLocationInStruct, dataLength);
-                                    }
-                                    else if(m.size == 4)
-                                    {
-                                        u32 *registerLocationInStruct = (u32*)(((u8*)&newRegisters) + m.offset);
-                                        IdentifyStringifiedDataTypeAndWrite32BitData(data, registerLocationInStruct, dataLength);
-                                    }
-                                    else if(m.size == 10)
-                                    {
-                                        // TODO(Karan): For 80bit floating point value, we can take user's input, 
-                                        // load it into x87 FPU of the debugger, read the STx register, copy that
-                                        // data into debuggee's x87 FPU state
-                                        DataType type = GetDataType(data, dataLength);
-                                        switch(type)
-                                        {
-                                            case numeric_hexadecimal:
-                                            {
-                                                if(dataLength > 16)
-                                                {
-                                                    u32 lowQuadStrLength = 16;
-                                                    u32 highQuadStrLength = dataLength - lowQuadStrLength;
-                                                    
-                                                    char *highQuadStr = data;
-                                                    char *lowQuadStr = data + highQuadStrLength;
-                                                    
-                                                    u64 highQuad = InterpretHexadecimalAs64BitData(highQuadStr, highQuadStrLength);
-                                                    u64 lowQuad = InterpretHexadecimalAs64BitData(lowQuadStr, lowQuadStrLength); 
-                                                    
-                                                    void *registerLocation = (((u8*)&newRegisters) + m.offset);
-                                                    ArrayCopy(&lowQuad, registerLocation, sizeof(u64));
-                                                    registerLocation = (((u8*)registerLocation) + sizeof(u64));
-                                                    ArrayCopy(&highQuad, registerLocation, sizeof(u16));
-                                                }
-                                                else
-                                                {
-                                                    u64 *registerLocationInStruct = (u64*)(((u8*)&newRegisters) + m.offset);
-                                                    *registerLocationInStruct = InterpretHexadecimalAs64BitData(data, dataLength);
-                                                }
-                                            }break;
-                                            case numeric_binary:
-                                            {
-                                                if(dataLength > 64)
-                                                {
-                                                    u32 lowQuadStrLength = 64;
-                                                    u32 highQuadStrLength = dataLength - lowQuadStrLength;
-                                                    
-                                                    char *highQuadStr = data;
-                                                    char *lowQuadStr = data + highQuadStrLength;
-                                                    
-                                                    u64 highQuad = InterpretBinaryAs64BitData(highQuadStr, highQuadStrLength);
-                                                    u64 lowQuad = InterpretBinaryAs64BitData(lowQuadStr, lowQuadStrLength); 
-                                                    
-                                                    void *registerLocation = (((u8*)&newRegisters) + m.offset);
-                                                    ArrayCopy(&lowQuad, registerLocation, sizeof(u64));
-                                                    registerLocation = (((u8*)registerLocation) + sizeof(u64));
-                                                    ArrayCopy(&highQuad, registerLocation, sizeof(u16));
-                                                }
-                                                else
-                                                {
-                                                    u64 *registerLocationInStruct = (u64*)(((u8*)&newRegisters) + m.offset);
-                                                    *registerLocationInStruct = InterpretBinaryAs64BitData(data, dataLength);
-                                                }
-                                            }break;
-                                            case string:
-                                            {
-                                                void* registerLocationInStruct = (((u8*)&newRegisters) + m.offset);
-                                                ArrayCopy(data + 1, registerLocationInStruct, MIN(dataLength - 2, m.size));
-                                            }break;
-                                            default:
-                                            {
-                                                OUT("Currently only supports hexadecimal,binary,string inputs for 80bit registers)\n");
-                                            }
-                                        }
-                                    }
-                                    else if(m.size == 16)
-                                    {
-                                        s64 spaceIndex = GetFirstIndex(data, ' ');
-                                        if(spaceIndex == 1)
-                                        {
-                                            u32 quadWordIndex = data[0] - '0';
-                                            u64 *registerLocationInStruct = (u64*)(((u8*)&newRegisters) + m.offset);
-                                            registerLocationInStruct += quadWordIndex;
-                                            IdentifyStringifiedDataTypeAndWrite64BitData(data + 2, registerLocationInStruct, dataLength - 2);
-                                        }
-                                        else if(spaceIndex == 2)
-                                        {
-                                            u32 doubleWordIndex = InterpretBinaryAs32BitData(data, 2);
-                                            u32 *registerLocationInStruct = (u32*)(((u8*)&newRegisters) + m.offset);
-                                            registerLocationInStruct += doubleWordIndex;
-                                            IdentifyStringifiedDataTypeAndWrite32BitData(data + 3, registerLocationInStruct, dataLength - 3);
-                                        }
-                                    }
                                     PTRACE_SET_GPREGISTERS(programID, &newRegisters, &bookKeeping);
                                     PTRACE_SET_FPREGISTERS(programID, &newRegisters, &bookKeeping);
                                     PTRACE_GET_GPREGISTERS(programID, &registers, &bookKeeping);
                                     PTRACE_GET_FPREGISTERS(programID, &registers, &bookKeeping);
                                 }
-                                void *registerLocationInStruct = ((u8*)&registers) + registerInfo.offset;
+                                
                                 switch(registerInfo.size)
                                 {
                                     case 4:
@@ -1251,31 +1372,19 @@ int main(int argc, char **argv)
                                     }break;
                                     INVALID_DEFAULT_CASE;
                                 }
+                                
                             }
-                            else if(IsSubstring((char*)"read", commandString))
+                            else if(commandInfo.type == command_read_memory)
                             {
-                                s64 spaceIndex = GetFirstIndex(commandString, ' ');
-                                
-                                char *startAddressString = commandString + (u32)spaceIndex + 1;
-                                u32 startAddressStringLength = (u32)GetFirstIndex(startAddressString, ' ');
-                                u64 startAddress = 0; IdentifyStringifiedDataTypeAndWrite64BitData(startAddressString, &startAddress, startAddressStringLength);
-                                char *endAddressString = startAddressString + startAddressStringLength + 1;
-                                u32 endAddressStringLength = (u32)GetFirstIndex(startAddressString, ' ');
-                                u64 endAddress = 0; IdentifyStringifiedDataTypeAndWrite64BitData(endAddressString, &endAddress, endAddressStringLength);
-                                
-                                char *displayTypeString = endAddressString + endAddressStringLength + 1;
-                                u32 displayTypeStringLength = (u32)GetFirstIndex(displayTypeString, ' ');
-                                u32 displayType = 0;
-                                IdentifyStringifiedDataTypeAndWrite32BitData(displayTypeString, &displayType, displayTypeStringLength);
-                                
-                                char *columnsString = displayTypeString + displayTypeStringLength + 1;
-                                u32 columnsStringLength = (u32)((commandString + commandStringLength) - columnsString);
-                                u32 columns = 0;
-                                IdentifyStringifiedDataTypeAndWrite32BitData(columnsString, &columns, columnsStringLength);
+                                ReadMemoryCommandArguments arguments = commandInfo.readMemoryCommandArguments;
+                                u64 startAddress = arguments.startAddress;
+                                u64 endAddress = arguments.endAddress;
+                                u32 columnSize = arguments.columnSize;
+                                u32 columns = arguments.columns;
                                 
                                 u32 bytes = (u32)(endAddress - startAddress);
                                 
-                                //bytes = ALIGN_POW_2(bytes, displayType * columns);
+                                //bytes = ALIGN_POW_2(bytes, columnSize * columns);
                                 u8* data = (u8*)malloc(bytes);
                                 u8* freeDataPtr = data;
                                 u8* onePastEnd = data + bytes;
@@ -1288,7 +1397,7 @@ int main(int argc, char **argv)
                                     u8* rowStart = data;
                                     for(u32 i = 0; (i < columns) && (data != onePastEnd); i++)
                                     {
-                                        for(u32 j = 0; (j < displayType) && (data != onePastEnd); j++)
+                                        for(u32 j = 0; (j < columnSize) && (data != onePastEnd); j++)
                                         {
                                             OUT("%02"PRIx8, *data++);
                                             currentAddress++;
@@ -1296,7 +1405,7 @@ int main(int argc, char **argv)
                                         OUT(" ");
                                     }
                                     
-                                    u32 stringBytes = (displayType * columns);
+                                    u32 stringBytes = (columnSize * columns);
                                     char *c = (char*)rowStart;
                                     OUT("| ");
                                     while(stringBytes--)
@@ -1315,11 +1424,14 @@ int main(int argc, char **argv)
                                 }
                                 free(freeDataPtr);
                             }
-                            else if(isRegisters || isX87 || isXMM || isGP)
+                            else if(commandInfo.type == command_read_all_registers || 
+                                    commandInfo.type == command_read_x87 || 
+                                    commandInfo.type == command_read_gp || 
+                                    commandInfo.type == command_read_xmm)
                             {
-                                bool displayGPRegs = isRegisters || isGP;
-                                bool displayx87Regs = isRegisters || isX87;
-                                bool displayXMMRegs = isRegisters || isXMM;
+                                bool displayGPRegs = commandInfo.type == command_read_all_registers  || commandInfo.type == command_read_gp;
+                                bool displayx87Regs = commandInfo.type == command_read_all_registers || commandInfo.type == command_read_x87;
+                                bool displayXMMRegs = commandInfo.type == command_read_all_registers || commandInfo.type == command_read_xmm;
                                 
                                 if(displayGPRegs)
                                 {
@@ -1392,38 +1504,26 @@ int main(int argc, char **argv)
                                     OUT("MXCRMASK:%08"PRIx32"%27s|\n", registers.mxcr_mask, "");
                                 }
                             }
-                            else if(IsSubstring((char*)"breakpoint", commandString))
+                            else if(commandInfo.type == command_breakpoint)
                             {
+                                BreakpointCommandArguments arguments = commandInfo.breakpointCommandArguments;
                                 if(breakpointCount < ARRAY_COUNT(breakpoints))
                                 {
-                                    s64 spaceIndex = GetFirstIndex(commandString, ' ');
-                                    if(spaceIndex != -1)
+                                    u64 breakpointAddress = arguments.breakpointAddress;
+                                    s64 instructionData = 0;
+                                    PTRACE_PEEK_VARIABLE_LENGTH_TEXT(programID, breakpointAddress, &instructionData, sizeof(instructionData), &bookKeeping);
+                                    s64 originalInstructionData = instructionData;
+                                    
+                                    if((instructionData & 0x00000000000000FF) != 0x00000000000000cc)
                                     {
-                                        u32 addressStringLength = commandStringLength - ((u32)spaceIndex + 1);
-                                        char *addressString = commandString + (spaceIndex + 1);
-                                        
-                                        u64 breakpointAddress = 0;
-                                        IdentifyStringifiedDataTypeAndWrite64BitData(addressString, &breakpointAddress, addressStringLength);
-                                        
-                                        s64 instructionData = 0;
-                                        PTRACE_PEEK_VARIABLE_LENGTH_TEXT(programID, breakpointAddress, &instructionData, sizeof(instructionData), &bookKeeping);
-                                        s64 originalInstructionData = instructionData;
-                                        
-                                        if((instructionData & 0x00000000000000FF) != 0x00000000000000cc)
+                                        instructionData = (instructionData & 0xFFFFFFFFFFFFFF00) | 0x00000000000000cc;
+                                        if(PTRACE_POKE_VARIABLE_LENGTH_TEXT(programID, breakpointAddress, &instructionData, sizeof(instructionData), &bookKeeping) != -1)
                                         {
-                                            instructionData = (instructionData & 0xFFFFFFFFFFFFFF00) | 0x00000000000000cc;
-                                            if(PTRACE_POKE_VARIABLE_LENGTH_TEXT(programID, breakpointAddress, &instructionData, sizeof(instructionData), &bookKeeping) != -1)
-                                            {
-                                                Breakpoint *b = breakpoints + breakpointCount++;
-                                                b->address = breakpointAddress;
-                                                b->instructionData = originalInstructionData;
-                                                b->isTemporary = false;
-                                            }
+                                            Breakpoint *b = breakpoints + breakpointCount++;
+                                            b->address = breakpointAddress;
+                                            b->instructionData = originalInstructionData;
+                                            b->isTemporary = false;
                                         }
-                                    }
-                                    else
-                                    {
-                                        OUT("Specify breakpoint address\n");
                                     }
                                 }
                                 else

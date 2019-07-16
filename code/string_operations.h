@@ -1,6 +1,78 @@
 #ifndef STRING_OPERATIONS_H
 #define STRING_OPERATIONS_H
 
+
+struct Cursor
+{
+    char *at;
+};
+
+
+inline bool IsEndOfLine(char c)
+{
+    bool result = ((c == '\n') ||
+                   (c == '\r'));
+    
+    return(result);
+}
+
+inline bool IsWhitespace(char c)
+{
+    bool result = ((c == ' ') ||
+                   (c == '\t') ||
+                   (c == '\v') ||
+                   (c == '\f') ||
+                   IsEndOfLine(c));
+    
+    return(result);
+}
+
+inline bool IsAlpha(char c)
+{
+    bool result = ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z'));
+    return result;
+}
+
+inline bool IsDigit(char c)
+{
+    bool result = ((c >= '0') && (c <= '9'));
+    return result;
+}
+
+inline void  EatAllWhitespace(Cursor *cursor)
+{
+    while((*(cursor->at)!= 0) && IsWhitespace(*(cursor->at))) ++(cursor->at);
+}
+
+
+inline void  EatUntilWhitespace(Cursor *cursor)
+{
+    while((*(cursor->at)!= 0) && !IsWhitespace(*(cursor->at))) ++(cursor->at);
+}
+
+
+inline void  EatUntilEndOfLine(Cursor *cursor)
+{
+    while((*(cursor->at)!= 0) && !IsEndOfLine(*(cursor->at))) ++(cursor->at);
+}
+
+
+
+bool MatchAndAdvance(Cursor *cursor, char *match)
+{
+    Cursor original = *cursor;
+    while(*match != 0)
+    {
+        if(*(cursor->at)++ != *match++)
+        {
+            *cursor = original;
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 bool AreStringsSame(char *str1, char *str2)
 {
     while(*str1 != 0 && *str2 != 0)
@@ -14,16 +86,11 @@ bool AreStringsSame(char *str1, char *str2)
     return *str1 == *str2;
 }
 
-bool IsSubstring(char *testSubstring, char *str)
+bool IsPrefix(char *str, char* prefix)
 {
-    while(*testSubstring != 0)
+    while(*prefix != 0)
     {
-        if(*str == 0)
-        {
-            INVALID_CODE_PATH;
-        }
-        
-        if(*testSubstring++ != *str++)
+        if(*prefix++ != *str++)
         {
             return false;
         }
@@ -87,13 +154,9 @@ enum DataType
     string
 };
 
-DataType GetDataType(char *str, u32 strLength = 0)
+DataType GetDataType(char *str)
 {
     DataType type = invalid_type;
-    if(strLength == 0)
-    {
-        strLength = GetStringLength(str);
-    }
     
     if(*str == '\"')
     {
@@ -101,24 +164,21 @@ DataType GetDataType(char *str, u32 strLength = 0)
     }
     else if(*str == '0')
     {
-        if(strLength >= 2)
+        if(str[1] == 'b')
         {
-            if(str[1] == 'b')
-            {
-                type = numeric_binary;
-            }
-            else if(str[1] == 'x')
-            {
-                type = numeric_hexadecimal;
-            }
-            else if(str[1] == '.')
-            {
-                type = numeric_decimal_real;
-            }
-            else
-            {
-                type = numeric_octal;
-            }
+            type = numeric_binary;
+        }
+        else if(str[1] == 'x')
+        {
+            type = numeric_hexadecimal;
+        }
+        else if(str[1] == '.')
+        {
+            type = numeric_decimal_real;
+        }
+        else if(IsDigit(str[1]))
+        {
+            type = numeric_octal;
         }
         else
         {
@@ -148,7 +208,12 @@ u64 InterpretHexadecimalAs64BitData(char *str, u32 strLength = 0)
 {
     if(strLength == 0)
     {
-        strLength = GetStringLength(str);
+        char *cursor = str;
+        while(IsAlpha(*cursor) || IsDigit(*cursor))
+        {
+            strLength++;
+            cursor++;
+        }
     }
     
     u64 result = 0;
@@ -181,7 +246,12 @@ u64 InterpretOctalAs64BitData(char *str, u32 strLength = 0)
 {
     if(strLength == 0)
     {
-        strLength = GetStringLength(str);
+        char *cursor = str;
+        while(IsDigit(*cursor))
+        {
+            strLength++;
+            cursor++;
+        }
     }
     
     u64 result = 0;
@@ -201,8 +271,20 @@ u64 InterpretBinaryAs64BitData(char *str, u32 strLength = 0)
 {
     if(strLength == 0)
     {
-        strLength = GetStringLength(str);
+        char *cursor = str;
+        if(cursor[0] == '0' && cursor[1] == 'b')
+        {
+            cursor += 2;
+            strLength += 2;
+        }
+        
+        while(IsDigit(*cursor))
+        {
+            strLength++;
+            cursor++;
+        }
     }
+    
     
     u64 result = 0;
     u64 multiplier = 1;
@@ -220,7 +302,12 @@ u64 InterpretDecimalIntegerAs64BitData(char *str, u32 strLength = 0)
 {
     if(strLength == 0)
     {
-        strLength = GetStringLength(str);
+        char *cursor = str;
+        while(IsDigit(*cursor))
+        {
+            strLength++;
+            cursor++;
+        }
     }
     
     u64 result = 0;
@@ -246,7 +333,12 @@ u64 InterpretRealAs64BitData(char *str, u32 strLength = 0)
 {
     if(strLength == 0)
     {
-        strLength = GetStringLength(str);
+        char *cursor = str;
+        while(IsDigit(*cursor) || *cursor == '.' || *cursor == 'f' || *cursor == 'F')
+        {
+            strLength++;
+            cursor++;
+        }
     }
     
     f64 data = 0.0;
@@ -297,7 +389,7 @@ u64 InterpretRealAs64BitData(char *str, u32 strLength = 0)
 
 void IdentifyStringifiedDataTypeAndWrite64BitData(char *str, u64 *dest, u32 strLength = 0)
 {
-    DataType type = GetDataType(str, strLength);
+    DataType type = GetDataType(str);
     switch(type)
     {
         case numeric_hexadecimal:
@@ -381,7 +473,51 @@ void IdentifyStringifiedDataTypeAndWrite32BitData(char *str, u32 *dest, u32 strL
     ArrayCopy(&result64, dest, sizeof(*dest));
 }
 
+void InterpretHexadecimalAs80BitData(char *str, void *dest, u32 strLength = 0)
+{
+    if(strLength > 16)
+    {
+        u32 lowQuadStrLength = 16;
+        u32 highQuadStrLength = strLength - lowQuadStrLength;
+        
+        char *highQuadStr = str;
+        char *lowQuadStr = str + highQuadStrLength;
+        
+        u64 highQuad = InterpretHexadecimalAs64BitData(highQuadStr, highQuadStrLength);
+        u64 lowQuad = InterpretHexadecimalAs64BitData(lowQuadStr, lowQuadStrLength); 
+        
+        ArrayCopy(&lowQuad, dest, sizeof(u64));
+        dest = (((u8*)dest) + sizeof(u64));
+        ArrayCopy(&highQuad, dest, sizeof(u16));
+    }
+    else
+    {
+        u64 *dest64  = (u64*)dest;
+        *dest64 = InterpretHexadecimalAs64BitData(str, strLength);
+    }
+}
 
-
-
+void InterpretBinaryAs80BitData(char *str, void *dest, u32 strLength = 0)
+{
+    if(strLength > 64)
+    {
+        u32 lowQuadStrLength = 64;
+        u32 highQuadStrLength = strLength - lowQuadStrLength;
+        
+        char *highQuadStr = str;
+        char *lowQuadStr = str + highQuadStrLength;
+        
+        u64 highQuad = InterpretBinaryAs64BitData(highQuadStr, highQuadStrLength);
+        u64 lowQuad = InterpretBinaryAs64BitData(lowQuadStr, lowQuadStrLength); 
+        
+        ArrayCopy(&lowQuad, dest, sizeof(u64));
+        dest = (((u8*)dest) + sizeof(u64));
+        ArrayCopy(&highQuad, dest, sizeof(u16));
+    }
+    else
+    {
+        u64 *dest64  = (u64*)dest;
+        *dest64 = InterpretBinaryAs64BitData(str, strLength);
+    }
+}
 #endif //STRING_OPERATIONS_H
