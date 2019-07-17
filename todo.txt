@@ -27,8 +27,17 @@ Todo:
         
         [x] Reading and writing registers
         [x] Reading memory
+        [x] Peek & Poke text can be improved
         [] Think of how to provide "write to memory" operation
         [] Command parsing, register name matching,etc are done in super slow fashion. Think of how to improve that
-        [] Peek & Poke text can be improved
+    }
+    
+    [] Source Level:
+    {
+        [] Setting breakpoint on a given line number
+        [] Continue
+        [] Step over
+        [] Step in
+        [] Read & Write Variables
     }
 }

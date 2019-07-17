@@ -46,7 +46,7 @@ u int 4 */
 
 struct GPRegistersx86_64
 {
-    u64 r15;
+    u64 r15; 
     u64 r14;
     u64 r13;
     u64 r12;
@@ -318,6 +318,7 @@ struct RegisterLocationSizeInfo
     u32 offset;
     u32 size;
 };
+
 
 RegisterLocationSizeInfo GetRegisterLocationSizeInfo(char *name, u32 length)
 {
@@ -593,7 +594,8 @@ internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes, Ptrac
 #ifdef __x86_64__
         u64 currentAddress = currentAddress64;
 #else
-        u32 currentAddress = (u32)LOW_32_FROM_64(currentAddress64);
+        u32 currentAddress = 0;
+        SET_LOW64_TO_32(currentAddress64, currentAddress);
 #endif
         long returnValue = PtraceWrapper(PTRACE_POKETEXT, pid, (void*)currentAddress, (void*)(*currentLong), bookKeeping, file, function, line);
         if(returnValue == -1)
@@ -608,7 +610,8 @@ internal s64 PtracePokeText(pid_t pid, u64 address, void *data, u32 bytes, Ptrac
 #ifdef __x86_64__
         u64 currentAddress = currentAddress64;
 #else
-        u32 currentAddress = (u32)LOW_32_FROM_64(currentAddress64);
+        u32 currentAddress = 0;
+        SET_LOW64_TO_32(currentAddress64, currentAddress);
 #endif
         u64 dataAtCurrentAddress = 0;
         
@@ -679,25 +682,26 @@ internal s64 PtraceGetGPRegisters(pid_t pid, Registersx86_64 *registers, PtraceE
     struct user_regs_struct regs;
     s64 result = PtraceWrapper(PTRACE_GETREGS, pid, &regs, &regs, bookKeeping, file, function, line);
 #ifndef __x86_64__
-    registers->rax = (u64)(regs.eax) & 0x00000000ffffffff;
-    registers->rbx = (u64)(regs.ebx) & 0x00000000ffffffff;
-    registers->rcx = (u64)(regs.ecx) & 0x00000000ffffffff;
-    registers->rdx = (u64)(regs.edx) & 0x00000000ffffffff;
-    registers->rbp = (u64)(regs.ebp) & 0x00000000ffffffff;
-    registers->rsp = (u64)(regs.esp) & 0x00000000ffffffff;
-    registers->rsi = (u64)(regs.esi) & 0x00000000ffffffff;
-    registers->rdi = (u64)(regs.edi) & 0x00000000ffffffff;
     
-    registers->ss = (u64)(regs.xss) & 0x00000000ffffffff;
-    registers->cs = (u64)(regs.xcs) & 0x00000000ffffffff;
-    registers->ds = (u64)(regs.xds) & 0x00000000ffffffff;
-    registers->es = (u64)(regs.xes) & 0x00000000ffffffff;
-    registers->fs = (u64)(regs.xfs) & 0x00000000ffffffff;
-    registers->gs = (u64)(regs.xgs) & 0x00000000ffffffff;
+    COPY_32_TO_LOW32_OF_64(regs.eax, registers->rax);
+    COPY_32_TO_LOW32_OF_64(regs.ebx, registers->rbx);
+    COPY_32_TO_LOW32_OF_64(regs.ecx, registers->rcx);
+    COPY_32_TO_LOW32_OF_64(regs.edx, registers->rdx);
+    COPY_32_TO_LOW32_OF_64(regs.ebp, registers->rbp);
+    COPY_32_TO_LOW32_OF_64(regs.esp, registers->rsp);
+    COPY_32_TO_LOW32_OF_64(regs.esi, registers->rsi);
+    COPY_32_TO_LOW32_OF_64(regs.edi, registers->rdi);
     
-    registers->eflags = (u64)(regs.eflags) & 0x00000000ffffffff;
-    registers->orig_rax = (u64)(regs.orig_eax) & 0x00000000ffffffff;
-    registers->rip  = (u64)(regs.eip) & 0x00000000ffffffff;
+    COPY_32_TO_LOW32_OF_64(regs.xss, registers->ss);
+    COPY_32_TO_LOW32_OF_64(regs.xcs, registers->cs);
+    COPY_32_TO_LOW32_OF_64(regs.xds, registers->ds);
+    COPY_32_TO_LOW32_OF_64(regs.xes, registers->es);
+    COPY_32_TO_LOW32_OF_64(regs.xfs, registers->fs);
+    COPY_32_TO_LOW32_OF_64(regs.xgs, registers->gs);
+    
+    COPY_32_TO_LOW32_OF_64(regs.eflags, registers->eflags);
+    COPY_32_TO_LOW32_OF_64(regs.orig_eax, registers->orig_rax);
+    COPY_32_TO_LOW32_OF_64(regs.eip, registers->rip);
 #else 
     CopyUserRegsx86_64ToGPRegistersx86_64(&regs, &(registers->gpRegs));
 #endif
@@ -716,8 +720,13 @@ internal s64 PtraceGetFPRegisters(pid_t pid, Registersx86_64 *registers, PtraceE
     registers->swd  = fpRegs.swd;
     registers->ftw  = fpRegs.twd;
     registers->fop  = fpRegs.fop;
-    registers->fip  = ((u64)fpRegs.fcs << 32) | ((u64)fpRegs.fip & 0x00000000ffffffff);
-    registers->rdp  = ((u64)fpRegs.fos << 32) | ((u64)fpRegs.foo & 0x00000000ffffffff);
+    
+    COPY_32_TO_LOW32_OF_64(fpRegs.fip, registers->fip);
+    COPY_32_TO_HIGH32_OF_64(fpRegs.fcs, registers->fip);
+    
+    COPY_32_TO_LOW32_OF_64(fpRegs.foo, registers->rdp);
+    COPY_32_TO_HIGH32_OF_64(fpRegs.fos, registers->rdp);
+    
     registers->mxcsr  = (u32)fpRegs.mxcsr;
     registers->mxcr_mask  = (u32)fpRegs.reserved;
     ArrayCopy(fpRegs.st_space, registers->st_space, sizeof(fpRegs.st_space));
@@ -735,25 +744,25 @@ internal s64 PtraceSetGPRegisters(pid_t pid, Registersx86_64 *registers, PtraceE
 {
     struct user_regs_struct regs = {};
 #ifndef __x86_64__
-    regs.eax = (s32)LOW_32_FROM_64(registers->rax) ;
-    regs.ebx = (s32)LOW_32_FROM_64(registers->rbx) ;
-    regs.ecx = (s32)LOW_32_FROM_64(registers->rcx) ;
-    regs.edx = (s32)LOW_32_FROM_64(registers->rdx) ;
-    regs.ebp = (s32)LOW_32_FROM_64(registers->rbp) ;
-    regs.esp = (s32)LOW_32_FROM_64(registers->rsp) ;
-    regs.esi = (s32)LOW_32_FROM_64(registers->rsi) ;
-    regs.edi = (s32)LOW_32_FROM_64(registers->rdi) ;
+    COPY_LOW32_OF_64_TO_32(registers->rax, regs.eax);
+    COPY_LOW32_OF_64_TO_32(registers->rbx, regs.ebx);
+    COPY_LOW32_OF_64_TO_32(registers->rcx, regs.ecx);
+    COPY_LOW32_OF_64_TO_32(registers->rdx, regs.edx);
+    COPY_LOW32_OF_64_TO_32(registers->rbp, regs.ebp);
+    COPY_LOW32_OF_64_TO_32(registers->rsp, regs.esp);
+    COPY_LOW32_OF_64_TO_32(registers->rsi, regs.esi);
+    COPY_LOW32_OF_64_TO_32(registers->rdi, regs.edi);
     
-    regs.xss = (s32)LOW_32_FROM_64(registers->ss) ;
-    regs.xcs = (s32)LOW_32_FROM_64(registers->cs) ;
-    regs.xds = (s32)LOW_32_FROM_64(registers->ds) ;
-    regs.xes = (s32)LOW_32_FROM_64(registers->es) ;
-    regs.xfs = (s32)LOW_32_FROM_64(registers->fs) ;
-    regs.xgs = (s32)LOW_32_FROM_64(registers->gs) ;
+    COPY_LOW32_OF_64_TO_32(registers->ss, regs.xss);
+    COPY_LOW32_OF_64_TO_32(registers->cs, regs.xcs);
+    COPY_LOW32_OF_64_TO_32(registers->ds, regs.xds);
+    COPY_LOW32_OF_64_TO_32(registers->es, regs.xes);
+    COPY_LOW32_OF_64_TO_32(registers->fs, regs.xfs);
+    COPY_LOW32_OF_64_TO_32(registers->gs, regs.xgs);
     
-    regs.eflags = (s32)LOW_32_FROM_64(registers->eflags) ;
-    regs.orig_eax = (s32)LOW_32_FROM_64(registers->orig_rax) ;
-    regs.eip  = (s32)LOW_32_FROM_64(registers->rip) ;
+    COPY_LOW32_OF_64_TO_32(registers->eflags, regs.eflags);
+    COPY_LOW32_OF_64_TO_32(registers->orig_rax, regs.orig_eax);
+    COPY_LOW32_OF_64_TO_32(registers->rip, regs.eip);
 #else 
     CopyGPRegistersx86_64ToUserRegsx86_64(&(registers->gpRegs), &regs);
 #endif
@@ -770,10 +779,13 @@ internal s64 PtraceSetFPRegisters(pid_t pid, Registersx86_64 *registers, PtraceE
     fpRegs.swd  = registers->swd;
     fpRegs.twd  = registers->ftw;
     fpRegs.fop  = registers->fop;
-    fpRegs.fip  = (s32)LOW_32_FROM_64(registers->fip);
-    fpRegs.fcs  = (s32)LOW_32_FROM_64((registers->fip >> 32));
-    fpRegs.foo  = (s32)LOW_32_FROM_64(registers->rdp);
-    fpRegs.fos  = (s32)LOW_32_FROM_64((registers->rdp >> 32));
+    
+    COPY_LOW32_OF_64_TO_32(registers->fip, fpRegs.fip);
+    COPY_HIGH32_OF_64_TO_32(registers->fip, fpRegs.fcs);
+    
+    COPY_LOW32_OF_64_TO_32(registers->rdp, fpRegs.foo);
+    COPY_HIGH32_OF_64_TO_32(registers->rdp, fpRegs.fos);
+    
     fpRegs.mxcsr  = (s32)registers->mxcsr;
     fpRegs.reserved  = (s32)registers->mxcr_mask;
     ArrayCopy(registers->st_space, fpRegs.st_space, sizeof(fpRegs.st_space));
@@ -790,7 +802,6 @@ struct Breakpoint
 {
     u64 address;
     s64 instructionData;
-    bool isTemporary;
 };
 
 internal Breakpoint* FindBreakpointSetAt(u64 address, Breakpoint *breakpoints, u32 length)
@@ -807,100 +818,6 @@ internal Breakpoint* FindBreakpointSetAt(u64 address, Breakpoint *breakpoints, u
     return result;
 }
 
-#if 0
-internal void RemoveBreakpointSetAt(u64 address, Breakpoint *breakpoints, u32 *length)
-{
-    for(u32 i = 0; i < *length; i++)
-    {
-        if(breakpoints[i].address == address)
-        {
-            if(i != (*length - 1))
-            {
-                Breakpoint *last = breakpoints + (*length - 1);
-                breakpoints[i] = *last;
-            }
-            *length = *length - 1;
-            break;
-        }
-    }
-}
-#endif
-struct PlatformState
-{
-    char cwd[MAX_FILEPATH_LENGTH];
-    char debugReportsDir[MAX_FILEPATH_LENGTH];
-    char backtraceFilepath[MAX_FILEPATH_LENGTH];
-    char coreFilepath[MAX_FILEPATH_LENGTH];
-    char coreFilepathSpec[MAX_FILEPATH_LENGTH];
-};
-global_variable PlatformState globalPlatformState = {};
-
-#if 0
-/* TODO(Karan): Think of how to handle errors.
-Generate a log report for tracking bugs.
-Identify states and critical information that must not be lost on crash and make them crash-safe.
-*/
-#define CORE_DUMP sprintf(globalPlatformState.coreFilepath, globalPlatformState.coreFilepathSpec, __func__, __LINE__); CoreDump(globalPlatformState.coreFilepath);
-internal void CoreDump(char* path)
-{
-    // TODO(Karan): This is hacky, couldn't find a reliable way to generate a core dump file
-    struct rlimit coreLimits;
-    coreLimits.rlim_cur = coreLimits.rlim_max = RLIM_INFINITY;
-    if(setrlimit(RLIMIT_CORE, &coreLimits) == -1)
-    {
-        ERR_WITH_LOCATION_INFO("%s", strerror(errno));
-    }
-    
-    pid_t myPID = getpid();
-    char myPIDString[42];
-    snprintf(myPIDString, ARRAY_COUNT(myPIDString), "%" PRId64, (s64)myPID);
-    char *arguments[] = {(char*)"gcore", (char*)"-o", path, myPIDString, (char*)0};
-    pid_t childPID = fork();
-    if(!childPID)
-    {
-        if(execvp("gcore", arguments) == -1)
-        {
-            ERR_WITH_LOCATION_INFO("%s", strerror(errno));
-        }
-    }
-    else
-    {
-        waitpid(childPID, 0, 0);
-    }
-}
-
-#define BACKTRACE(b) Backtrace((char*)(globalPlatformState.backtraceFilepath), __LINE__, __func__, __FILE__, (char*)(b))
-internal void Backtrace(char *filepath, u32 line, const char *function, const char *file, char* title)
-{
-    void *stackFrameReturnAddresses[MAX_BACKTRACE_STACK_FRAMES];
-    s32 backtraceFrames = backtrace((void**)&stackFrameReturnAddresses, MAX_BACKTRACE_STACK_FRAMES);
-    
-    s32 fd = open(filepath, O_RDWR | O_CREAT);
-    if(fd != -1)
-    {
-        if(lseek(fd, 0, SEEK_END) != -1)
-        {
-            char separator[] = "=============================================";
-            dprintf(fd, "%s\n@ %s: %s(%d)\nERRNO:%d (%s)\n", separator, function, file, line, errno, strerror(errno));
-            if(title)
-            {
-                dprintf(fd, "%s\n", title);
-            }
-            backtrace_symbols_fd(stackFrameReturnAddresses, backtraceFrames, fd);
-            dprintf(fd, "\n");
-            close(fd);
-        }
-        else
-        {
-            ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to seek the end of backtrace file: %s. %s", errno, filepath, strerror(errno));
-        }
-    }
-    else
-    {
-        ERR_WITH_LOCATION_INFO("ERRNO:%d Failed to open the backtrace file: %s. %s", errno, filepath, strerror(errno));
-    }
-}
-#endif
 
 enum CommandType
 {
@@ -953,156 +870,108 @@ void ParseCommand(Cursor cursor, CommandInfo *commandInfo)
     CommandInfo clear = {};
     *commandInfo = clear;
     
+    
+    // Skip the command name to not include it in the args list
     EatAllWhitespace(&cursor);
-    if(MatchAndAdvance(&cursor, (char*)"ls"))
+    Cursor commandStart = cursor;
+    EatUntilWhitespace(&cursor);
+    u32 commandNameLength = (u32)(cursor.at - commandStart.at);
+    
+    char *args[4] = {};
+    u32 argsLength[4] = {};
+    u32 nextArgIndex = 0;
+    while(*cursor.at != 0 && !IsEndOfLine(*cursor.at))
     {
-        commandInfo->type = command_ls;
-        return;
+        if(nextArgIndex >= ARRAY_COUNT(args)) break;
+        EatAllWhitespace(&cursor);
+        args[nextArgIndex] = cursor.at;
+        EatUntilWhitespace(&cursor);
+        argsLength[nextArgIndex] = (u32)(cursor.at - args[nextArgIndex]);
+        nextArgIndex++;
     }
-    else if(MatchAndAdvance(&cursor, (char*)"gp"))
-    {
-        commandInfo->type = command_read_gp;
-        return;
-    }
-    else if(MatchAndAdvance(&cursor, (char*)"xmm\n"))
-    {
-        commandInfo->type = command_read_xmm;
-        return;
-    }
-    else if(MatchAndAdvance(&cursor, (char*)"x87"))
-    {
-        commandInfo->type = command_read_x87;
-        return;
-    }
-    else if(MatchAndAdvance(&cursor, (char*)"continue"))
-    {
-        commandInfo->type = command_continue;
-        return;
-    }
-    else if(MatchAndAdvance(&cursor, (char*)"step in"))
-    {
-        commandInfo->type = command_stepin;
-        return;
-    }
-    else if(MatchAndAdvance(&cursor, (char*)"registers"))
-    {
-        commandInfo->type = command_read_all_registers;
-        return;
-    }
+    u32 numArgs = nextArgIndex;
+    
+    cursor = commandStart;
+    if(MatchAndAdvance(&cursor, (char*)"ls")) { commandInfo->type = command_ls; }
+    else if(MatchAndAdvance(&cursor, (char*)"gp")) { commandInfo->type = command_read_gp; }
+    else if(MatchAndAdvance(&cursor, (char*)"xmm\n")) { commandInfo->type = command_read_xmm; }
+    else if(MatchAndAdvance(&cursor, (char*)"x87")) { commandInfo->type = command_read_x87; }
+    else if(MatchAndAdvance(&cursor, (char*)"continue")) { commandInfo->type = command_continue; }
+    else if(MatchAndAdvance(&cursor, (char*)"step in")) { commandInfo->type = command_stepin; }
+    else if(MatchAndAdvance(&cursor, (char*)"registers")) { commandInfo->type = command_read_all_registers; }
     else if(MatchAndAdvance(&cursor, (char*)"breakpoint"))
     {
-        EatAllWhitespace(&cursor);
-        Cursor next = cursor;
-        EatUntilWhitespace(&next);
-        u32 length = (u32)(next.at - cursor.at);
-        if(length != 0)
+        u32 expectedArgs = 1;
+        if(numArgs != expectedArgs)
         {
-            commandInfo->type = command_breakpoint;
-            IdentifyStringifiedDataTypeAndWrite64BitData(cursor.at, &(commandInfo->breakpointCommandArguments.breakpointAddress));
+            ERR("Expected %d arguments, got %d.\n", expectedArgs, numArgs);
+            ERR("Syntax error: breakpoint <address>\n");
+            commandInfo->type = command_invalid;
         }
         else
         {
-            commandInfo->type = command_invalid;
-            ERR("Syntax error: breakpoint <address>\n");
+            commandInfo->type = command_breakpoint;
+            IdentifyStringifiedDataTypeAndWrite64BitData(args[0], &(commandInfo->breakpointCommandArguments.breakpointAddress), argsLength[0]);
         }
-        return;
     }
     else if(MatchAndAdvance(&cursor, (char*)"read"))
     {
-        EatAllWhitespace(&cursor);
-        Cursor next = cursor;
-        EatUntilWhitespace(&next);
-        commandInfo->type = command_read_memory;
-        u32 length = (u32)(next.at - cursor.at);
-        if(length == 0) commandInfo->type = command_invalid;
-        IdentifyStringifiedDataTypeAndWrite64BitData(cursor.at, &(commandInfo->readMemoryCommandArguments.startAddress), length);
-        
-        cursor = next;
-        EatAllWhitespace(&cursor);
-        next = cursor;
-        EatUntilWhitespace(&next);
-        length = (u32)(next.at - cursor.at);
-        if(length == 0) commandInfo->type = command_invalid;
-        IdentifyStringifiedDataTypeAndWrite64BitData(cursor.at, &(commandInfo->readMemoryCommandArguments.endAddress), (u32)(next.at - cursor.at));
-        
-        cursor = next;
-        EatAllWhitespace(&cursor);
-        next = cursor;
-        EatUntilWhitespace(&next);
-        length = (u32)(next.at - cursor.at);
-        if(length == 0) commandInfo->type = command_invalid;
-        IdentifyStringifiedDataTypeAndWrite32BitData(cursor.at, &(commandInfo->readMemoryCommandArguments.columnSize), (u32)(next.at - cursor.at));
-        
-        cursor = next;
-        EatAllWhitespace(&cursor);
-        next = cursor;
-        EatUntilWhitespace(&next);
-        length = (u32)(next.at - cursor.at);
-        if(length == 0) commandInfo->type = command_invalid;
-        IdentifyStringifiedDataTypeAndWrite32BitData(cursor.at, &(commandInfo->readMemoryCommandArguments.columns), (u32)(next.at - cursor.at));
-        
-        if(commandInfo->type == command_invalid) ERR("Syntax error: read <start_address> <end_address> <columnSize> <columns>\n");
-        
-        return;
+        u32 expectedArgs = 4;
+        if(numArgs != expectedArgs)
+        {
+            ERR("Expected %d arguments, got %d.\n", expectedArgs, numArgs);
+            ERR("Syntax error: read <start_address> <end_address> <columnSize> <columns>\n");
+            commandInfo->type = command_invalid;
+        }
+        else
+        {
+            commandInfo->type = command_read_memory;
+            IdentifyStringifiedDataTypeAndWrite64BitData(args[0], &(commandInfo->readMemoryCommandArguments.startAddress), argsLength[0]);
+            IdentifyStringifiedDataTypeAndWrite64BitData(args[1], &(commandInfo->readMemoryCommandArguments.endAddress),   argsLength[1]);
+            IdentifyStringifiedDataTypeAndWrite32BitData(args[2], &(commandInfo->readMemoryCommandArguments.columnSize),   argsLength[2]);
+            IdentifyStringifiedDataTypeAndWrite32BitData(args[3], &(commandInfo->readMemoryCommandArguments.columns),      argsLength[3]);
+        }
     }
     else
     {
-        Cursor potentialRegistername = cursor;
-        EatUntilWhitespace(&cursor);
-        RegisterLocationSizeInfo registerInfo = GetRegisterLocationSizeInfo(potentialRegistername.at, (u32)(cursor.at - potentialRegistername.at));
+        RegisterLocationSizeInfo registerInfo = GetRegisterLocationSizeInfo(cursor.at, commandNameLength);
         if(registerInfo.size != 0)
         {
-            EatAllWhitespace(&cursor);
-            Cursor potentialRegisterValueString = cursor;
-            EatUntilEndOfLine(&cursor);
-            u32 dataLength = (u32)(cursor.at - potentialRegisterValueString.at);
-            if(dataLength == 0)
+            commandInfo->readWriteRegisterCommandArguments.registerInfo = registerInfo;
+            if(numArgs == 0)
             {
                 commandInfo->type = command_read_register;
-                commandInfo->readWriteRegisterCommandArguments.registerInfo = registerInfo;
-                return;
+            }
+            else if(numArgs == 1)
+            {
+                commandInfo->type = command_write_register;
+                switch(registerInfo.size)
+                {
+                    case 4: IdentifyStringifiedDataTypeAndWrite32BitData(args[0], (u32*)(commandInfo->readWriteRegisterCommandArguments.data), argsLength[0]); break;
+                    case 8: IdentifyStringifiedDataTypeAndWrite64BitData(args[0], (u64*)(commandInfo->readWriteRegisterCommandArguments.data), argsLength[0]); break;
+                    case 10:
+                    {
+                        // TODO(Karan): For 80bit floating point value, we can take user's input, 
+                        // load it into x87 FPU of the debugger, read the STx register, copy that
+                        // data into debuggee's x87 FPU state
+                        // HACK(Karan): Handle vector registers separately
+                        DataType type = GetDataType(args[0]);
+                        switch(type)
+                        {
+                            case numeric_hexadecimal: InterpretHexadecimalAs80BitData(args[0], (commandInfo->readWriteRegisterCommandArguments.data), argsLength[0]); break;
+                            case numeric_binary: InterpretBinaryAs80BitData(args[0], (commandInfo->readWriteRegisterCommandArguments.data), argsLength[0]);break;
+                            case string:ArrayCopy(args[0] + 1, (commandInfo->readWriteRegisterCommandArguments.data), MIN(argsLength[0] - 2, registerInfo.size)); break;
+                            default: OUT("Currently only supports hexadecimal,binary,string inputs for 80bit registers)\n");
+                        }
+                    }break;
+                    case 16: OUT("Invalid command. Usage examples:\n   >xmm0d0\n   >xmm15d1\n   >xmm0q0\n   >xmm15q3\n"); break;
+                    INVALID_DEFAULT_CASE;
+                }
             }
             else
             {
-                commandInfo->type = command_write_register;
-                commandInfo->readWriteRegisterCommandArguments.registerInfo = registerInfo;
-                
-                if(registerInfo.size == 8)
-                {
-                    IdentifyStringifiedDataTypeAndWrite64BitData(potentialRegisterValueString.at, (u64*)(commandInfo->readWriteRegisterCommandArguments.data), dataLength);
-                }
-                else if(registerInfo.size == 4)
-                {
-                    IdentifyStringifiedDataTypeAndWrite32BitData(potentialRegisterValueString.at, (u32*)(commandInfo->readWriteRegisterCommandArguments.data), dataLength);
-                }
-                else if(registerInfo.size == 10  || registerInfo.size == 16)
-                {
-                    // TODO(Karan): For 80bit floating point value, we can take user's input, 
-                    // load it into x87 FPU of the debugger, read the STx register, copy that
-                    // data into debuggee's x87 FPU state
-                    // HACK(Karan): Handle vector registers separately
-                    DataType type = GetDataType(potentialRegisterValueString.at);
-                    switch(type)
-                    {
-                        case numeric_hexadecimal:
-                        {
-                            InterpretHexadecimalAs80BitData(potentialRegisterValueString.at, (commandInfo->readWriteRegisterCommandArguments.data), dataLength);
-                        }break;
-                        case numeric_binary:
-                        {
-                            InterpretBinaryAs80BitData(potentialRegisterValueString.at, (commandInfo->readWriteRegisterCommandArguments.data), dataLength);
-                        }break;
-                        case string:
-                        {
-                            ArrayCopy(potentialRegisterValueString.at + 1, (commandInfo->readWriteRegisterCommandArguments.data), MIN(dataLength - 2, registerInfo.size));
-                        }break;
-                        default:
-                        {
-                            OUT("Currently only supports hexadecimal,binary,string inputs for 80bit registers)\n");
-                        }
-                    }
-                }
-                return;
+                ERR("Expected 0 or 1 argument, got %d.\n", numArgs);
+                ERR("Syntax error: <register_name> [<value>]\n");
             }
         }
         else
@@ -1111,31 +980,13 @@ void ParseCommand(Cursor cursor, CommandInfo *commandInfo)
             ERR("Invalid command\n");
         }
     }
+    
+    return;
 }
 
 
 int main(int argc, char **argv)
 {
-    {
-        // NOTE(Karan): Initialization for storing stack trace and core dump reports
-        
-        getcwd(globalPlatformState.cwd, ARRAY_COUNT(globalPlatformState.cwd));
-        ConcateToPath((char*)globalPlatformState.cwd, (char*)"debug_reports", (char*)globalPlatformState.debugReportsDir);
-        ConcateToPath((char*)globalPlatformState.debugReportsDir, (char*)"backtrace.txt", (char*)globalPlatformState.backtraceFilepath);
-        ConcateToPath((char*)globalPlatformState.debugReportsDir, (char*)"core_%s_%d", (char*)globalPlatformState.coreFilepathSpec);
-        struct stat stat_buf = {};
-        stat(globalPlatformState.backtraceFilepath, &stat_buf);
-        if(stat_buf.st_size >= GIGABYTES(1))
-        {
-            char newFilename[MAX_FILENAME_LENGTH] = {};
-            // NOTE(Karan): Attaching pid to create a random name
-            sprintf(newFilename, "backtrace_%d.txt", getpid());
-            char newBacktraceFilepath[MAX_FILEPATH_LENGTH] = {};
-            ConcateToPath((char*)globalPlatformState.debugReportsDir, (char*)newFilename, (char*)newBacktraceFilepath);
-            rename(globalPlatformState.backtraceFilepath, newBacktraceFilepath);
-        }
-    }
-    
     pid_t debuggeeProgramID = 0;
     char* programPath;
     char* workingDirectoryPath;
@@ -1522,7 +1373,6 @@ int main(int argc, char **argv)
                                             Breakpoint *b = breakpoints + breakpointCount++;
                                             b->address = breakpointAddress;
                                             b->instructionData = originalInstructionData;
-                                            b->isTemporary = false;
                                         }
                                     }
                                 }

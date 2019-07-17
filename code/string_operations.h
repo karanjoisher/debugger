@@ -202,10 +202,11 @@ DataType GetDataType(char *str)
 }
 
 
-
+// NOTE(Karan): All string interpretation functions assume that the user submits correctly formatted string!! Egs: 000xFF would not be checked by these functions!
 // TODO(Karan): Test these string to numeric/string conversions!!
 u64 InterpretHexadecimalAs64BitData(char *str, u32 strLength = 0)
 {
+    u64 result = 0;
     if(strLength == 0)
     {
         char *cursor = str;
@@ -216,7 +217,6 @@ u64 InterpretHexadecimalAs64BitData(char *str, u32 strLength = 0)
         }
     }
     
-    u64 result = 0;
     u64 multiplier = 1;
     char *hexadecimal = str + strLength - 1;
     while((*hexadecimal != 'x') && (hexadecimal != (str - 1)))
@@ -239,11 +239,13 @@ u64 InterpretHexadecimalAs64BitData(char *str, u32 strLength = 0)
         hexadecimal--;
     }
     
+    
     return result;
 }
 
 u64 InterpretOctalAs64BitData(char *str, u32 strLength = 0)
 {
+    u64 result = 0;
     if(strLength == 0)
     {
         char *cursor = str;
@@ -254,7 +256,6 @@ u64 InterpretOctalAs64BitData(char *str, u32 strLength = 0)
         }
     }
     
-    u64 result = 0;
     u64 multiplier = 1;
     char *octal = str + strLength - 1;
     while(octal != str)
@@ -284,7 +285,6 @@ u64 InterpretBinaryAs64BitData(char *str, u32 strLength = 0)
             cursor++;
         }
     }
-    
     
     u64 result = 0;
     u64 multiplier = 1;

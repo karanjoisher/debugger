@@ -53,6 +53,11 @@ inline void ClearArray(void *array, u32 size, u8 val = 0)
     }
 }
 
-// TODO(Karan): Convert this to ArrayCopy as I am not sure whether C++ spec guarantees this..?
-#define LOW_32_FROM_64(value) ((value) & 0x00000000FFFFFFFF)
+
+#define COPY_DW_TO_LOWDW_OF_QW(s, d) ArrayCopy(&(s), &(d) , sizeof(u32)) 
+#define COPY_DW_TO_HIGHDW_OF_QW(s, d) ArrayCopy(&(s), (((u8*)(&(d))) + sizeof(u32)) , sizeof(u32)) 
+
+#define COPY_LOWDW_OF_QW_TO_DW(s, d) ArrayCopy(&(s), &(d) , sizeof(u32)) 
+#define COPY_HIGHDW_OF_QW_TO_DW(s, d) ArrayCopy((((u8*)(&(s))) + sizeof(u32)), &(d) , sizeof(u32)) 
+
 #endif //UTILIY_H
